@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { TodoRepository } from './todoRepository';
 import { TreeNode, TodoTreeDataProvider, getWorkspaceFolderKey } from './todoTreeDataProvider';
 import { Todo } from './types';
+import { TodoWebviewHost } from './todoWebviewHost';
 
 type ScopeTarget = { scope: 'global' } | { scope: 'workspace'; workspaceFolder: string };
 type TodoTarget =
@@ -16,6 +17,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	const repository = new TodoRepository(context);
 	const globalProvider = new TodoTreeDataProvider(repository, 'global', 'todoGlobalView');
 	const projectsProvider = new TodoTreeDataProvider(repository, 'projects', 'todoProjectsView');
+	const webviewHost = new TodoWebviewHost(context);
 
 	const globalView = vscode.window.createTreeView<TreeNode>('todoGlobalView', {
 		treeDataProvider: globalProvider,
@@ -35,7 +37,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		lastSelectedNode = event.selection[0];
 	});
 
-	context.subscriptions.push(globalProvider, projectsProvider, globalView, projectsView);
+	context.subscriptions.push(globalProvider, projectsProvider, globalView, projectsView, webviewHost);
 
 	registerCommands({
 		context,
