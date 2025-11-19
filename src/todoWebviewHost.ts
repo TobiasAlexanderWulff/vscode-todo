@@ -91,7 +91,10 @@ class TodoWebviewProvider implements vscode.WebviewViewProvider, vscode.Disposab
 		this.ready = false;
 		webviewView.webview.options = {
 			enableScripts: true,
-			localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
+			localResourceRoots: [
+				vscode.Uri.joinPath(this.extensionUri, 'media'),
+				vscode.Uri.joinPath(this.extensionUri, 'resources'),
+			],
 		};
 		webviewView.webview.onDidReceiveMessage((message: unknown) =>
 			this.onMessage(message as InboundMessage)
@@ -117,11 +120,17 @@ class TodoWebviewProvider implements vscode.WebviewViewProvider, vscode.Disposab
 
 	private buildHtml(webview: vscode.Webview): string {
 		const nonce = getNonce();
+		const scriptUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this.extensionUri, 'media', 'webview.js')
+		);
+		const stylesUri = webview.asWebviewUri(
+			vscode.Uri.joinPath(this.extensionUri, 'media', 'webview.css')
+		);
 		const csp = [
 			"default-src 'none';",
 			`img-src ${webview.cspSource} https:;`,
-			`style-src 'unsafe-inline' ${webview.cspSource};`,
-			`script-src 'nonce-${nonce}';`,
+			`style-src ${webview.cspSource} 'unsafe-inline';`,
+			`script-src 'nonce-${nonce}' ${webview.cspSource};`,
 		].join(' ');
 		return `<!DOCTYPE html>
 <html lang="en">
@@ -130,17 +139,13 @@ class TodoWebviewProvider implements vscode.WebviewViewProvider, vscode.Disposab
 		<meta http-equiv="Content-Security-Policy" content="${csp}" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>TODOs</title>
+		<link rel="stylesheet" href="${stylesUri}" />
 	</head>
-	<body>
+	<body data-view-mode="${this.mode}">
 		<main id="root" data-mode="${this.mode}">
-			<p>TODO webview placeholder (${this.mode}).</p>
+			<p class="empty-state">Loading TODOs…</p>
 		</main>
-		<script nonce="${nonce}">
-			(function () {
-				const vscode = acquireVsCodeApi();
-				vscode.postMessage({ type: 'webviewReady', mode: '${this.mode}' });
-			})();
-		</script>
+		<script nonce="${nonce}" src="${scriptUri}"></script>
 	</body>
 </html>`;
 	}
