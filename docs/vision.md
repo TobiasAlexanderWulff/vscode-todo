@@ -1,7 +1,7 @@
 # Vision
 
 ## Context
-- We are building a VS Code extension scaffoled via `npm init @vscode`.
+- We are building a VS Code extension scaffolded via `yo code` (TypeScript template).
 - The extension should make it effortless to track TODO items without leaving the editor.
 - VS Code already provides profile-aware global storage and workspace-aware storage that we can leverage.
 
@@ -28,7 +28,7 @@ Both scopes should be visible side-by-side in the Explorer view (e.g., via a `Tr
 - **Respect language preferences** — provide English and German localizations, with graceful fallback behavior.
 
 ## Rough Implementation Direction
-1. Scaffold the project with `npm init @vscode` (TypeScript template).
+1. Scaffold the project with `yo code` (TypeScript template).
 2. Implement a `TodoRepository` abstraction that wraps `globalState`/`workspaceState`.
 3. Build a `TreeDataProvider` with two collapsible root nodes (“Global” and “Projects”), rendering each workspace folder as a child under “Projects.”
 4. Wire extension commands to mutate the repository, confirm destructive actions (e.g., clearing todos), and refresh the tree.
