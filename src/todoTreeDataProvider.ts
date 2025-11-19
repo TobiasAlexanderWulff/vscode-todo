@@ -97,8 +97,19 @@ export class TodoTreeDataProvider implements vscode.TreeDataProvider<TreeNode>, 
 				.sort((a, b) => a.position - b.position)
 				.map((todo) => ({ kind: 'todo', todo }));
 		}
+		const folders = this.getWorkspaceFolders();
 		if (!element) {
-			return (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
+			if (folders.length <= 1) {
+				const folderKey = folders[0]?.uri.toString();
+				if (!folderKey) {
+					return [];
+				}
+				return this.repository
+					.getWorkspaceTodos(folderKey)
+					.sort((a, b) => a.position - b.position)
+					.map((todo) => ({ kind: 'todo', todo }));
+			}
+			return folders.map((folder) => ({
 				kind: 'workspace',
 				folder,
 			}));
@@ -114,6 +125,10 @@ export class TodoTreeDataProvider implements vscode.TreeDataProvider<TreeNode>, 
 
 	getParent(element: TreeNode): TreeNode | undefined {
 		if (this.mode === 'global') {
+			return undefined;
+		}
+		const folders = this.getWorkspaceFolders();
+		if (folders.length <= 1) {
 			return undefined;
 		}
 		if (element.kind === 'todo' && element.todo.workspaceFolder) {
@@ -140,6 +155,10 @@ export class TodoTreeDataProvider implements vscode.TreeDataProvider<TreeNode>, 
 
 	get mimeType(): string {
 		return this.treeMimeType;
+	}
+
+	private getWorkspaceFolders(): readonly vscode.WorkspaceFolder[] {
+		return vscode.workspace.workspaceFolders ?? [];
 	}
 }
 

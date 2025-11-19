@@ -31,7 +31,8 @@
         },
         {
           "id": "todoProjectsView",
-          "name": "%view.todoProjects.label%"
+          "name": "%view.todoProjects.label%",
+          "when": "workspaceFolderCount > 0"
         }
       ]
     },
