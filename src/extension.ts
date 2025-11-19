@@ -10,30 +10,40 @@ type TodoTarget =
 	| { todoId: string; scope: 'global' }
 	| { todoId: string; scope: 'workspace'; workspaceFolder: string };
 
-const TREE_VIEW_ID = 'todoView';
-
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
 	await l10n.config({ fsPath: context.asAbsolutePath('l10n/bundle.l10n.json') });
 
 	const repository = new TodoRepository(context);
-	const treeProvider = new TodoTreeDataProvider(repository);
-	const treeView = vscode.window.createTreeView<TreeNode>(TREE_VIEW_ID, {
-		treeDataProvider: treeProvider,
-		dragAndDropController: treeProvider.dragAndDropController,
+	const globalProvider = new TodoTreeDataProvider(repository, 'global', 'todoGlobalView');
+	const projectsProvider = new TodoTreeDataProvider(repository, 'projects', 'todoProjectsView');
+
+	const globalView = vscode.window.createTreeView<TreeNode>('todoGlobalView', {
+		treeDataProvider: globalProvider,
+		dragAndDropController: globalProvider.dragAndDropController,
+	});
+	const projectsView = vscode.window.createTreeView<TreeNode>('todoProjectsView', {
+		treeDataProvider: projectsProvider,
+		dragAndDropController: projectsProvider.dragAndDropController,
 		showCollapseAll: true,
 	});
 
 	let lastSelectedNode: TreeNode | undefined;
-	treeView.onDidChangeSelection((event) => {
+	globalView.onDidChangeSelection((event) => {
+		lastSelectedNode = event.selection[0];
+	});
+	projectsView.onDidChangeSelection((event) => {
 		lastSelectedNode = event.selection[0];
 	});
 
-	context.subscriptions.push(treeProvider, treeView);
+	context.subscriptions.push(globalProvider, projectsProvider, globalView, projectsView);
 
 	registerCommands({
 		context,
 		repository,
-		treeProvider,
+		refreshTreeViews: () => {
+			globalProvider.refresh();
+			projectsProvider.refresh();
+		},
 		getSelectedNode: () => lastSelectedNode,
 	});
 
@@ -47,38 +57,38 @@ export function deactivate(): void {
 interface CommandContext {
 	context: vscode.ExtensionContext;
 	repository: TodoRepository;
-	treeProvider: TodoTreeDataProvider;
+	refreshTreeViews: () => void;
 	getSelectedNode: () => TreeNode | undefined;
 }
 
 function registerCommands({
 	context,
 	repository,
-	treeProvider,
+	refreshTreeViews,
 	getSelectedNode,
 }: CommandContext): void {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('todo.addTodo', (node?: TreeNode) =>
-			addTodo({ repository, treeProvider, getSelectedNode }, node)
+			addTodo({ repository, refreshTreeViews, getSelectedNode }, node)
 		),
 		vscode.commands.registerCommand('todo.editTodo', (node?: TreeNode) =>
-			editTodo({ repository, treeProvider, getSelectedNode }, node)
+			editTodo({ repository, refreshTreeViews, getSelectedNode }, node)
 		),
 		vscode.commands.registerCommand('todo.completeTodo', (node?: TreeNode) =>
-			toggleTodoCompletion({ repository, treeProvider, getSelectedNode }, node)
+			toggleTodoCompletion({ repository, refreshTreeViews, getSelectedNode }, node)
 		),
 		vscode.commands.registerCommand('todo.removeTodo', (node?: TreeNode) =>
-			removeTodo({ repository, treeProvider, getSelectedNode }, node)
+			removeTodo({ repository, refreshTreeViews, getSelectedNode }, node)
 		),
 		vscode.commands.registerCommand('todo.clearTodos', (node?: TreeNode) =>
-			clearTodos({ repository, treeProvider, getSelectedNode }, node)
+			clearTodos({ repository, refreshTreeViews, getSelectedNode }, node)
 		)
 	);
 }
 
 interface HandlerContext {
 	repository: TodoRepository;
-	treeProvider: TodoTreeDataProvider;
+	refreshTreeViews: () => void;
 	getSelectedNode: () => TreeNode | undefined;
 }
 
@@ -108,7 +118,7 @@ async function addTodo(
 	const todos = readTodos(context.repository, scope);
 	todos.push(todo);
 	await persistTodos(context.repository, scope, todos);
-	context.treeProvider.refresh();
+	context.refreshTreeViews();
 }
 
 async function editTodo(
@@ -136,7 +146,7 @@ async function editTodo(
 	existing.title = title.trim();
 	existing.updatedAt = new Date().toISOString();
 	await persistTodos(context.repository, target, todos);
-	context.treeProvider.refresh();
+	context.refreshTreeViews();
 }
 
 async function toggleTodoCompletion(
@@ -159,7 +169,7 @@ async function toggleTodoCompletion(
 		? l10n.t('command.complete.completed', 'Marked TODO as completed')
 		: l10n.t('command.complete.reopened', 'Marked TODO as active');
 	vscode.window.setStatusBarMessage(stateMessage, 2000);
-	context.treeProvider.refresh();
+	context.refreshTreeViews();
 }
 
 async function removeTodo(
@@ -176,7 +186,7 @@ async function removeTodo(
 		return;
 	}
 	await persistTodos(context.repository, target, next);
-	context.treeProvider.refresh();
+	context.refreshTreeViews();
 }
 
 async function clearTodos(
@@ -219,7 +229,7 @@ async function clearTodos(
 	);
 	context.repository.captureSnapshot(scopeKey, todos);
 	await persistTodos(context.repository, scope, []);
-	context.treeProvider.refresh();
+	context.refreshTreeViews();
 	const undoAction = l10n.t('command.undo', 'Undo');
 	const clearedMessage = l10n.t(
 		'command.clear.success',
@@ -234,7 +244,7 @@ async function clearTodos(
 		const snapshot = context.repository.consumeSnapshot(scopeKey);
 		if (snapshot) {
 			await persistTodos(context.repository, scope, snapshot);
-			context.treeProvider.refresh();
+			context.refreshTreeViews();
 			vscode.window.showInformationMessage(
 				l10n.t('command.undo.success', 'Restored TODOs for {0}', describeScope(scope))
 			);
@@ -259,9 +269,6 @@ async function resolveScopeTarget(
 function scopeFromNode(node?: TreeNode): ScopeTarget | undefined {
 	if (!node) {
 		return undefined;
-	}
-	if (node.kind === 'globalRoot') {
-		return { scope: 'global' };
 	}
 	if (node.kind === 'workspace') {
 		return { scope: 'workspace', workspaceFolder: getWorkspaceFolderKey(node.folder) };

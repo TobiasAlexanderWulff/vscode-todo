@@ -1,17 +1,16 @@
 import * as l10n from '@vscode/l10n';
 import * as vscode from 'vscode';
 
-import { Todo } from './types';
 import { TodoRepository } from './todoRepository';
+import { Todo } from './types';
 
-export type TreeNode = GlobalRootNode | ProjectsRootNode | WorkspaceFolderNode | TodoNode;
+export type ProviderMode = 'global' | 'projects';
 
-export interface GlobalRootNode {
-	kind: 'globalRoot';
-}
+export type TreeNode = TodoNode | WorkspaceFolderNode;
 
-export interface ProjectsRootNode {
-	kind: 'projectsRoot';
+export interface TodoNode {
+	kind: 'todo';
+	todo: Todo;
 }
 
 export interface WorkspaceFolderNode {
@@ -19,22 +18,27 @@ export interface WorkspaceFolderNode {
 	folder: vscode.WorkspaceFolder;
 }
 
-export interface TodoNode {
-	kind: 'todo';
-	todo: Todo;
-}
-
-const TREE_ID = 'todoView';
-const TREE_MIME = 'application/vnd.code.tree.todoview';
+const TREE_MIME_BASE = 'application/vnd.code.tree.';
 
 export class TodoTreeDataProvider implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
 	private readonly _onDidChangeTreeData = new vscode.EventEmitter<TreeNode | void>();
 	private readonly workspaceDisposable: vscode.Disposable;
 	private readonly dndController: TodoTreeDragAndDropController;
+	private readonly treeMimeType: string;
 
-	constructor(private readonly repository: TodoRepository) {
+	constructor(
+		private readonly repository: TodoRepository,
+		private readonly mode: ProviderMode,
+		private readonly treeViewId: string
+	) {
+		this.treeMimeType = `${TREE_MIME_BASE}${treeViewId.toLowerCase()}`;
 		this.workspaceDisposable = vscode.workspace.onDidChangeWorkspaceFolders(() => this.refresh());
-		this.dndController = new TodoTreeDragAndDropController(this.repository, this);
+		this.dndController = new TodoTreeDragAndDropController(
+			this.repository,
+			this,
+			this.mode,
+			this.treeMimeType
+		);
 	}
 
 	get onDidChangeTreeData(): vscode.Event<TreeNode | void> {
@@ -56,100 +60,67 @@ export class TodoTreeDataProvider implements vscode.TreeDataProvider<TreeNode>, 
 	}
 
 	getTreeItem(element: TreeNode): vscode.TreeItem {
-		switch (element.kind) {
-			case 'globalRoot': {
-				const item = new vscode.TreeItem(
-					l10n.t('tree.global.label', 'Global'),
-					vscode.TreeItemCollapsibleState.Expanded
-				);
-				item.contextValue = 'todo:globalRoot';
-				const count = this.repository.getGlobalTodos().length;
-				item.description = l10n.t('tree.todo.count', '{0} TODOs', count);
-				return item;
-			}
-			case 'projectsRoot': {
-				const item = new vscode.TreeItem(
-					l10n.t('tree.projects.label', 'Projects'),
-					vscode.TreeItemCollapsibleState.Expanded
-				);
-				item.contextValue = 'todo:projectsRoot';
-				const folders = vscode.workspace.workspaceFolders ?? [];
-				item.description =
-					folders.length === 0
-						? l10n.t('tree.projects.empty', 'Open a folder to track project TODOs')
-						: l10n.t('tree.projects.count', '{0} folders', folders.length);
-				return item;
-			}
-			case 'workspace': {
-				const item = new vscode.TreeItem(
-					element.folder.name,
-					vscode.TreeItemCollapsibleState.Collapsed
-				);
-				item.contextValue = 'todo:workspaceFolder';
-				const todos = this.repository.getWorkspaceTodos(element.folder.uri.toString());
-				item.description = l10n.t('tree.todo.count', '{0} TODOs', todos.length);
-				return item;
-			}
-			case 'todo': {
-				const item = new vscode.TreeItem(element.todo.title, vscode.TreeItemCollapsibleState.None);
-				item.contextValue =
-					element.todo.scope === 'global' ? 'todo:globalItem' : 'todo:workspaceItem';
-				item.tooltip = element.todo.completed
-					? l10n.t('tree.todo.completedTooltip', 'Completed at {0}', element.todo.updatedAt)
-					: undefined;
-				item.iconPath = new vscode.ThemeIcon(
-					element.todo.completed ? 'check' : 'circle-large-outline'
-				);
-				item.description = element.todo.completed
-					? l10n.t('tree.todo.completedLabel', 'Completed')
-					: undefined;
-				item.id =
-					element.todo.scope === 'global'
-						? `global:${element.todo.id}`
-						: `workspace:${element.todo.workspaceFolder}:${element.todo.id}`;
-				return item;
-			}
+		if (element.kind === 'workspace') {
+			const item = new vscode.TreeItem(
+				element.folder.name,
+				vscode.TreeItemCollapsibleState.Collapsed
+			);
+			item.contextValue = 'todo:workspaceFolder';
+			const todos = this.repository.getWorkspaceTodos(element.folder.uri.toString());
+			item.description = l10n.t('tree.todo.count', '{0} TODOs', todos.length);
+			return item;
 		}
+		const item = new vscode.TreeItem(element.todo.title, vscode.TreeItemCollapsibleState.None);
+		item.contextValue =
+			element.todo.scope === 'global' ? 'todo:globalItem' : 'todo:workspaceItem';
+		item.tooltip = element.todo.completed
+			? l10n.t('tree.todo.completedTooltip', 'Completed at {0}', element.todo.updatedAt)
+			: undefined;
+		item.iconPath = new vscode.ThemeIcon(element.todo.completed ? 'check' : 'circle-large-outline');
+		item.description = element.todo.completed
+			? l10n.t('tree.todo.completedLabel', 'Completed')
+			: undefined;
+		item.id =
+			element.todo.scope === 'global'
+				? `global:${element.todo.id}`
+				: `workspace:${element.todo.workspaceFolder}:${element.todo.id}`;
+		return item;
 	}
 
 	getChildren(element?: TreeNode): TreeNode[] {
-		if (!element) {
-			return [{ kind: 'globalRoot' }, { kind: 'projectsRoot' }];
-		}
-		switch (element.kind) {
-			case 'globalRoot':
-				return this.repository
-					.getGlobalTodos()
-					.sort((a, b) => a.position - b.position)
-					.map((todo) => ({ kind: 'todo', todo }));
-			case 'projectsRoot':
-				return (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
-					kind: 'workspace',
-					folder,
-				}));
-			case 'workspace':
-				return this.repository
-					.getWorkspaceTodos(element.folder.uri.toString())
-					.sort((a, b) => a.position - b.position)
-					.map((todo) => ({ kind: 'todo', todo }));
-			case 'todo':
+		if (this.mode === 'global') {
+			if (element) {
 				return [];
+			}
+			return this.repository
+				.getGlobalTodos()
+				.sort((a, b) => a.position - b.position)
+				.map((todo) => ({ kind: 'todo', todo }));
 		}
+		if (!element) {
+			return (vscode.workspace.workspaceFolders ?? []).map((folder) => ({
+				kind: 'workspace',
+				folder,
+			}));
+		}
+		if (element.kind === 'workspace') {
+			return this.repository
+				.getWorkspaceTodos(element.folder.uri.toString())
+				.sort((a, b) => a.position - b.position)
+				.map((todo) => ({ kind: 'todo', todo }));
+		}
+		return [];
 	}
 
 	getParent(element: TreeNode): TreeNode | undefined {
-		if (element.kind === 'todo') {
-			if (element.todo.scope === 'global') {
-				return { kind: 'globalRoot' };
-			}
+		if (this.mode === 'global') {
+			return undefined;
+		}
+		if (element.kind === 'todo' && element.todo.workspaceFolder) {
 			const folder = this.getWorkspaceFolderByKey(element.todo.workspaceFolder);
 			if (folder) {
 				return { kind: 'workspace', folder };
 			}
-			return { kind: 'projectsRoot' };
-		}
-		if (element.kind === 'workspace') {
-			return { kind: 'projectsRoot' };
 		}
 		return undefined;
 	}
@@ -162,6 +133,14 @@ export class TodoTreeDataProvider implements vscode.TreeDataProvider<TreeNode>, 
 			(folder) => folder.uri.toString() === key
 		);
 	}
+
+	get modeLabel(): string {
+		return this.mode;
+	}
+
+	get mimeType(): string {
+		return this.treeMimeType;
+	}
 }
 
 interface DragPayload {
@@ -173,13 +152,18 @@ interface DragPayload {
 class TodoTreeDragAndDropController
 	implements vscode.TreeDragAndDropController<TreeNode>, vscode.Disposable
 {
-	readonly dropMimeTypes = [TREE_MIME];
-	readonly dragMimeTypes = [TREE_MIME];
+	readonly dropMimeTypes: readonly string[];
+	readonly dragMimeTypes: readonly string[];
 
 	constructor(
 		private readonly repository: TodoRepository,
-		private readonly provider: TodoTreeDataProvider
-	) {}
+		private readonly provider: TodoTreeDataProvider,
+		private readonly mode: ProviderMode,
+		private readonly mimeType: string
+	) {
+		this.dropMimeTypes = [mimeType];
+		this.dragMimeTypes = [mimeType];
+	}
 
 	handleDrag(source: readonly TreeNode[], dataTransfer: vscode.DataTransfer): void {
 		const payload: DragPayload[] = source
@@ -190,45 +174,75 @@ class TodoTreeDragAndDropController
 				workspaceFolder: node.todo.workspaceFolder,
 			}));
 		if (payload.length > 0) {
-			dataTransfer.set(TREE_MIME, new vscode.DataTransferItem(payload));
+			dataTransfer.set(this.mimeType, new vscode.DataTransferItem(payload));
 		}
 	}
 
 	async handleDrop(target: TreeNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
-		const transferItem = dataTransfer.get(TREE_MIME);
+		const transferItem = dataTransfer.get(this.mimeType);
 		if (!transferItem) {
 			return;
 		}
 		const payload = transferItem.value as DragPayload[] | string;
-		const [first] =
+		const dragged =
 			Array.isArray(payload) && payload.length > 0
-				? payload
-				: JSON.parse(typeof payload === 'string' ? payload : '[]');
-		if (!first) {
+				? payload[0]
+				: JSON.parse(typeof payload === 'string' ? payload : '[]')[0];
+		if (!dragged) {
 			return;
 		}
 
-		const scope = this.resolveScopeFromTarget(target);
-		if (!scope || scope.scope !== first.scope || scope.workspaceFolder !== first.workspaceFolder) {
-			return;
+		if (this.mode === 'global') {
+			if (dragged.scope !== 'global') {
+				return;
+			}
+			await this.reorderTodos(this.repository.getGlobalTodos(), dragged.id, undefined, target);
+		} else {
+			if (dragged.scope !== 'workspace' || !dragged.workspaceFolder) {
+				return;
+			}
+			const folderKey = this.resolveWorkspaceKey(target) ?? dragged.workspaceFolder;
+			if (folderKey !== dragged.workspaceFolder) {
+				return;
+			}
+			await this.reorderTodos(
+				this.repository.getWorkspaceTodos(folderKey),
+				dragged.id,
+				folderKey,
+				target
+			);
 		}
+	}
 
-		const todos =
-			scope.scope === 'global'
-				? this.repository.getGlobalTodos()
-				: this.repository.getWorkspaceTodos(scope.workspaceFolder!);
-		const draggedIndex = todos.findIndex((todo) => todo.id === first.id);
+	private resolveWorkspaceKey(target?: TreeNode): string | undefined {
+		if (!target) {
+			return undefined;
+		}
+		if (target.kind === 'workspace') {
+			return target.folder.uri.toString();
+		}
+		return target.todo.workspaceFolder;
+	}
+
+	private async reorderTodos(
+		todos: Todo[],
+		draggedId: string,
+		workspaceFolder: string | undefined,
+		target: TreeNode | undefined
+	): Promise<void> {
+		const draggedIndex = todos.findIndex((todo) => todo.id === draggedId);
 		if (draggedIndex < 0) {
 			return;
 		}
 		const [dragged] = todos.splice(draggedIndex, 1);
-
 		let insertIndex = todos.length;
 		if (target && target.kind === 'todo') {
 			insertIndex = todos.findIndex((todo) => todo.id === target.todo.id);
 			if (insertIndex < 0) {
 				insertIndex = todos.length;
 			}
+		} else if (target && target.kind === 'workspace') {
+			insertIndex = todos.length;
 		}
 		todos.splice(insertIndex, 0, dragged);
 		const now = new Date().toISOString();
@@ -238,32 +252,17 @@ class TodoTreeDragAndDropController
 				todo.updatedAt = now;
 			}
 		});
-		if (scope.scope === 'global') {
+
+		if (this.mode === 'global') {
 			await this.repository.saveGlobalTodos(todos);
-		} else if (scope.workspaceFolder) {
-			await this.repository.saveWorkspaceTodos(scope.workspaceFolder, todos);
+		} else if (workspaceFolder) {
+			await this.repository.saveWorkspaceTodos(workspaceFolder, todos);
 		}
 		this.provider.refresh();
 	}
 
-	private resolveScopeFromTarget(target?: TreeNode): { scope: 'global' | 'workspace'; workspaceFolder?: string } | undefined {
-		if (!target) {
-			return undefined;
-		}
-		if (target.kind === 'todo') {
-			return { scope: target.todo.scope, workspaceFolder: target.todo.workspaceFolder };
-		}
-		if (target.kind === 'globalRoot') {
-			return { scope: 'global' };
-		}
-		if (target.kind === 'workspace') {
-			return { scope: 'workspace', workspaceFolder: target.folder.uri.toString() };
-		}
-		return undefined;
-	}
-
 	dispose(): void {
-		// Nothing to dispose.
+		// No-op
 	}
 }
 

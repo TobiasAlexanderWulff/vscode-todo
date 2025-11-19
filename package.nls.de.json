@@ -6,5 +6,7 @@
 	"command.todo.completeTodo.title": "Todo abschließen",
 	"command.todo.removeTodo.title": "Todo entfernen",
 	"command.todo.clearTodos.title": "Todos löschen",
-	"view.todoView.label": "Todo-Listen"
+	"viewContainer.todo.title": "Todos",
+	"view.todoGlobal.label": "Globale Todos",
+	"view.todoProjects.label": "Projekt-Todos"
 }

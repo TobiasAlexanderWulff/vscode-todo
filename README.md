@@ -11,7 +11,7 @@ The project vision, keyboard shortcuts, and UX principles live in [`docs/vision.
 
 Phase 2 brings the UI to life:
 
-- The **TODO Lists** tree view (Explorer) shows two roots: **Global** and **Projects**, with one collapsible node per workspace folder.
+- A dedicated TODOs icon now lives in the Activity Bar. Inside you’ll find two tree views: **Global TODOs** (profile scope) and **Project TODOs** (one collapsible section per workspace folder).
 - All commands (`todo.addTodo`, `todo.editTodo`, `todo.completeTodo`, `todo.removeTodo`, `todo.clearTodos`) are fully wired: add/edit todos, toggle completion, reorder via drag-and-drop, and clear scoped lists with confirmation + undo toasts.
 - Localization uses `@vscode/l10n` with English and German bundles in `/l10n`, so the TreeView and prompts adapt to the active VS Code language.
 - `TodoRepository` persists profile/workspace todos with hidden IDs, timestamps, ordering (`position`), and undo snapshots for destructive operations.
