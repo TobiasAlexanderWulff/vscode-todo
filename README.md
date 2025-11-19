@@ -1,71 +1,44 @@
-# vscode-todo README
+# vscode-todo
 
-This is the README for your extension "vscode-todo". After writing up a brief description, we recommend including the following sections.
+`vscode-todo` keeps the tasks that live in your head next to the files you are editing. The extension tracks two scopes in one Explorer tree:
 
-## Features
+- **Global / profile-bound:** todos that follow your active VS Code profile across every workspace.
+- **Project / workspace-bound:** todos that live alongside a specific workspace folder inside multi-root setups.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+The project vision, keyboard shortcuts, and UX principles live in [`docs/vision.md`](docs/vision.md). The high-level implementation roadmap is in [`docs/implementation-plan.md`](docs/implementation-plan.md).
 
-For example if there is an image subfolder under your extension project workspace:
+## Current status
 
-\!\[feature X\]\(images/feature-x.png\)
+Phase 2 brings the UI to life:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- A dedicated TODOs icon now lives in the Activity Bar. Inside you’ll find two tree views: **Global TODOs** (profile scope) and **Project TODOs** (one collapsible section per workspace folder).
+- All commands (`todo.addTodo`, `todo.editTodo`, `todo.completeTodo`, `todo.removeTodo`, `todo.clearTodos`) are fully wired: add/edit todos, toggle completion, reorder via drag-and-drop, and clear scoped lists with confirmation + undo toasts.
+- Localization uses `@vscode/l10n` with English and German bundles in `/l10n`, so the TreeView and prompts adapt to the active VS Code language.
+- `TodoRepository` persists profile/workspace todos with hidden IDs, timestamps, ordering (`position`), and undo snapshots for destructive operations.
 
-## Requirements
+## Commands & shortcuts
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+| Command | Title | Default shortcut |
+| --- | --- | --- |
+| `todo.addTodo` | Add TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> |
+| `todo.editTodo` | Edit TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>E</kbd> |
+| `todo.completeTodo` | Complete TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Enter</kbd> |
+| `todo.removeTodo` | Remove TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Backspace</kbd> |
+| `todo.clearTodos` | Clear TODO list | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>Backspace</kbd> |
 
-## Extension Settings
+## Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+| Setting | Default | Description |
+| --- | --- | --- |
+| `todo.confirmDestructiveActions` | `true` | Require confirmation before clearing multiple todos and show an Undo toast afterwards. |
 
-For example:
+## Development
 
-This extension contributes the following settings:
+```bash
+npm install
+npm run compile
+npm run watch        # incremental build while coding
+npm run test         # runs the VS Code extension tests
+```
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+The `docs/` folder contains the product vision, implementation plan, and agents guide that explain how to extend this project.
