@@ -9,6 +9,7 @@ import {
 	TodoWebviewHost,
 	WebviewScope,
 	ProviderMode,
+	WebviewMessageEvent,
 } from './todoWebviewHost';
 import { buildWebviewStateSnapshot } from './webviewState';
 
@@ -23,10 +24,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	const repository = new TodoRepository(context);
 	const globalProvider = new TodoTreeDataProvider(repository, 'global', 'todoGlobalView');
 	const projectsProvider = new TodoTreeDataProvider(repository, 'projects', 'todoProjectsView');
+	const refreshTreeViews = (): void => {
+		globalProvider.refresh();
+		projectsProvider.refresh();
+	};
 	const webviewHost = new TodoWebviewHost(context);
-	const webviewMessageDisposable = webviewHost.onDidReceiveMessage((event) => {
-		console.log('[webview]', event);
-	});
+	const webviewMessageDisposable = webviewHost.onDidReceiveMessage((event) =>
+		handleWebviewMessage(event, repository, webviewHost, refreshTreeViews)
+	);
 
 	const globalView = vscode.window.createTreeView<TreeNode>('todoGlobalView', {
 		treeDataProvider: globalProvider,
@@ -58,10 +63,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 	registerCommands({
 		context,
 		repository,
-		refreshTreeViews: () => {
-			globalProvider.refresh();
-			projectsProvider.refresh();
-		},
+		refreshTreeViews,
 		getSelectedNode: () => lastSelectedNode,
 		webviewHost,
 	});
@@ -226,6 +228,10 @@ async function clearTodos(
 	if (!scope) {
 		return;
 	}
+	await clearScope(context, scope);
+}
+
+async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<void> {
 	const todos = readTodos(context.repository, scope);
 	if (todos.length === 0) {
 		vscode.window.showInformationMessage(
@@ -484,4 +490,199 @@ function scopeToProviderMode(scope: ScopeTarget): ProviderMode {
 function broadcastWebviewState(host: TodoWebviewHost, repository: TodoRepository): void {
 	const snapshot = buildWebviewStateSnapshot(repository);
 	host.broadcast({ type: 'stateUpdate', payload: snapshot });
+}
+
+function scopeFromWebviewScope(scope: WebviewScope): ScopeTarget | undefined {
+	if (scope.scope === 'global') {
+		return { scope: 'global' };
+	}
+	if (!scope.workspaceFolder) {
+		return undefined;
+	}
+	return { scope: 'workspace', workspaceFolder: scope.workspaceFolder };
+}
+
+function reorderTodosByOrder(todos: Todo[], order: string[]): boolean {
+	const lookup = new Map<string, Todo>();
+	todos.forEach((todo) => lookup.set(todo.id, todo));
+	const newOrder: Todo[] = [];
+	order.forEach((id) => {
+		const todo = lookup.get(id);
+		if (todo) {
+			newOrder.push(todo);
+			lookup.delete(id);
+		}
+	});
+	lookup.forEach((todo) => newOrder.push(todo));
+	let changed = false;
+	const now = new Date().toISOString();
+	newOrder.forEach((todo, index) => {
+		const nextPosition = index + 1;
+		if (todo.position !== nextPosition) {
+			todo.position = nextPosition;
+			todo.updatedAt = now;
+			changed = true;
+		}
+	});
+	// mutate original array order to match new order
+	todos.splice(0, todos.length, ...newOrder);
+	return changed;
+}
+
+async function handleWebviewMessage(
+	event: WebviewMessageEvent,
+	repository: TodoRepository,
+	webviewHost: TodoWebviewHost,
+	refreshTreeViews: () => void
+): Promise<void> {
+	const { message } = event;
+	if (message.type === 'webviewReady') {
+		broadcastWebviewState(webviewHost, repository);
+		return;
+	}
+	if (message.type === 'clearScope') {
+		const scope = scopeFromWebviewScope(message.scope);
+		if (!scope) {
+			return;
+		}
+		const context: HandlerContext = {
+			repository,
+			refreshTreeViews,
+			getSelectedNode: () => undefined,
+			webviewHost,
+		};
+		await clearScope(context, scope);
+		return;
+	}
+	const mutationPerformed = await handleWebviewMutation(message, repository);
+	if (!mutationPerformed) {
+		return;
+	}
+	refreshTreeViews();
+	broadcastWebviewState(webviewHost, repository);
+}
+
+async function handleWebviewMutation(
+	message: WebviewMessageEvent['message'],
+	repository: TodoRepository
+): Promise<boolean> {
+	switch (message.type) {
+		case 'commitCreate':
+			return handleWebviewCreate(repository, message.scope, message.title);
+		case 'commitEdit':
+			return handleWebviewEdit(repository, message.scope, message.todoId, message.title);
+		case 'toggleComplete':
+			return handleWebviewToggle(repository, message.scope, message.todoId);
+		case 'removeTodo':
+			return handleWebviewRemove(repository, message.scope, message.todoId);
+		case 'reorderTodos':
+			return handleWebviewReorder(repository, message.scope, message.order);
+		default:
+			return false;
+	}
+}
+
+async function handleWebviewCreate(
+	repository: TodoRepository,
+	scope: WebviewScope,
+	title: string
+): Promise<boolean> {
+	const target = scopeFromWebviewScope(scope);
+	const trimmed = title.trim();
+	if (!target || trimmed.length === 0) {
+		return false;
+	}
+	const todo = repository.createTodo({
+		title: trimmed,
+		scope: target.scope,
+		workspaceFolder: target.scope === 'workspace' ? target.workspaceFolder : undefined,
+	});
+	const todos = readTodos(repository, target);
+	todos.push(todo);
+	await persistTodos(repository, target, todos);
+	return true;
+}
+
+async function handleWebviewEdit(
+	repository: TodoRepository,
+	scope: WebviewScope,
+	todoId: string,
+	title: string
+): Promise<boolean> {
+	const target = scopeFromWebviewScope(scope);
+	if (!target) {
+		return false;
+	}
+	const trimmed = title.trim();
+	if (trimmed.length === 0) {
+		return false;
+	}
+	const todos = readTodos(repository, target);
+	const todo = todos.find((item) => item.id === todoId);
+	if (!todo) {
+		return false;
+	}
+	todo.title = trimmed;
+	todo.updatedAt = new Date().toISOString();
+	await persistTodos(repository, target, todos);
+	return true;
+}
+
+async function handleWebviewToggle(
+	repository: TodoRepository,
+	scope: WebviewScope,
+	todoId: string
+): Promise<boolean> {
+	const target = scopeFromWebviewScope(scope);
+	if (!target) {
+		return false;
+	}
+	const todos = readTodos(repository, target);
+	const todo = todos.find((item) => item.id === todoId);
+	if (!todo) {
+		return false;
+	}
+	todo.completed = !todo.completed;
+	todo.updatedAt = new Date().toISOString();
+	await persistTodos(repository, target, todos);
+	return true;
+}
+
+async function handleWebviewRemove(
+	repository: TodoRepository,
+	scope: WebviewScope,
+	todoId: string
+): Promise<boolean> {
+	const target = scopeFromWebviewScope(scope);
+	if (!target) {
+		return false;
+	}
+	const todos = readTodos(repository, target);
+	const next = todos.filter((todo) => todo.id !== todoId);
+	if (next.length === todos.length) {
+		return false;
+	}
+	await persistTodos(repository, target, next);
+	return true;
+}
+
+async function handleWebviewReorder(
+	repository: TodoRepository,
+	scope: WebviewScope,
+	order: string[]
+): Promise<boolean> {
+	const target = scopeFromWebviewScope(scope);
+	if (!target) {
+		return false;
+	}
+	const todos = readTodos(repository, target);
+	if (todos.length <= 1) {
+		return false;
+	}
+	const reordered = reorderTodosByOrder(todos, order);
+	if (!reordered) {
+		return false;
+	}
+	await persistTodos(repository, target, todos);
+	return true;
 }
