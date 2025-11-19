@@ -10,6 +10,7 @@ import {
 	WebviewScope,
 	ProviderMode,
 } from './todoWebviewHost';
+import { buildWebviewStateSnapshot } from './webviewState';
 
 type ScopeTarget = { scope: 'global' } | { scope: 'workspace'; workspaceFolder: string };
 type TodoTarget =
@@ -64,6 +65,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 		getSelectedNode: () => lastSelectedNode,
 		webviewHost,
 	});
+	broadcastWebviewState(webviewHost, repository);
 
 	console.log(l10n.t('extension.activatedLog', 'vscode-todo extension activated.'));
 }
@@ -141,6 +143,7 @@ async function addTodo(
 	todos.push(todo);
 	await persistTodos(context.repository, scope, todos);
 	context.refreshTreeViews();
+	broadcastWebviewState(context.webviewHost, context.repository);
 }
 
 async function editTodo(
@@ -170,6 +173,7 @@ async function editTodo(
 	existing.updatedAt = new Date().toISOString();
 	await persistTodos(context.repository, target, todos);
 	context.refreshTreeViews();
+	broadcastWebviewState(context.webviewHost, context.repository);
 }
 
 async function toggleTodoCompletion(
@@ -193,6 +197,7 @@ async function toggleTodoCompletion(
 		: l10n.t('command.complete.reopened', 'Marked TODO as active');
 	vscode.window.setStatusBarMessage(stateMessage, 2000);
 	context.refreshTreeViews();
+	broadcastWebviewState(context.webviewHost, context.repository);
 }
 
 async function removeTodo(
@@ -210,6 +215,7 @@ async function removeTodo(
 	}
 	await persistTodos(context.repository, target, next);
 	context.refreshTreeViews();
+	broadcastWebviewState(context.webviewHost, context.repository);
 }
 
 async function clearTodos(
@@ -253,6 +259,7 @@ async function clearTodos(
 	context.repository.captureSnapshot(scopeKey, todos);
 	await persistTodos(context.repository, scope, []);
 	context.refreshTreeViews();
+	broadcastWebviewState(context.webviewHost, context.repository);
 	const undoAction = l10n.t('command.undo', 'Undo');
 	const clearedMessage = l10n.t(
 		'command.clear.success',
@@ -271,6 +278,7 @@ async function clearTodos(
 			vscode.window.showInformationMessage(
 				l10n.t('command.undo.success', 'Restored TODOs for {0}', describeScope(scope))
 			);
+			broadcastWebviewState(context.webviewHost, context.repository);
 		}
 	} else {
 		// Expire snapshot after a short delay.
@@ -471,4 +479,9 @@ function todoTargetToWebviewScope(target: TodoTarget): WebviewScope | undefined 
 
 function scopeToProviderMode(scope: ScopeTarget): ProviderMode {
 	return scope.scope === 'global' ? 'global' : 'projects';
+}
+
+function broadcastWebviewState(host: TodoWebviewHost, repository: TodoRepository): void {
+	const snapshot = buildWebviewStateSnapshot(repository);
+	host.broadcast({ type: 'stateUpdate', payload: snapshot });
 }
