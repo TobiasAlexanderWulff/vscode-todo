@@ -2,7 +2,7 @@
   "name": "vscode-todo",
   "displayName": "vscode-todo",
   "description": "Keep your project and profile TODO lists up to date.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.106.1"
   },

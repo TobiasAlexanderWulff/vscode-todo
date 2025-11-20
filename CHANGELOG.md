@@ -6,6 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.1.0] - 2025-11-20
+
+### Changed
+- Streamlined webview UI by removing redundant Global/Projects section headers and counts inside each view; toolbar buttons remain for add/clear actions.
+- Fixed localization gaps for the Projects view and pruned unused count strings from the bundles.
+- Refreshed README copy for marketplace readiness.
+
 ### Added
 - Phase 1 foundation: removed scaffold command, registered real TODO commands and keybindings, and documented the product vision in `docs/vision.md`.
 - Localization bootstrap with `@vscode/l10n` plus English/German bundles for runtime strings and `package.nls.*.json`.
