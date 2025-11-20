@@ -383,6 +383,52 @@ test('addTodo dispatches inline create after focusing container', async () => {
 			).length >= 2
 		);
 	});
+
+	test('clears and restores global todos via undo from webview', async () => {
+		const { repository } = createRepositoryHarness();
+		const todoA = repository.createTodo({ title: 'Global A', scope: 'global' });
+		const todoB = repository.createTodo({ title: 'Global B', scope: 'global' });
+		await repository.saveGlobalTodos([todoA, todoB]);
+
+		const host = new FakeWebviewHost();
+		(vscode.window as unknown as { showWarningMessage: typeof vscode.window.showWarningMessage }).showWarningMessage =
+			async (...args: any[]) => args[2];
+		let infoCall = 0;
+		const infoMessages: any[] = [];
+		(vscode.window as unknown as { showInformationMessage: typeof vscode.window.showInformationMessage }).showInformationMessage =
+			async (...args: any[]) => {
+				infoMessages.push(args);
+				if (infoCall === 0 && args.length > 1) {
+					infoCall += 1;
+					return args[1];
+				}
+				infoCall += 1;
+				return undefined;
+			};
+
+		await handleWebviewMessage(
+			{
+				mode: 'global',
+				message: {
+					type: 'clearScope',
+					scope: { scope: 'global' },
+				},
+			} as any,
+			repository,
+			host as any
+		);
+
+		const restored = repository.getGlobalTodos();
+		assert.strictEqual(restored.length, 2);
+		assert.strictEqual(restored[0].title, 'Global A');
+		assert.strictEqual(restored[1].title, 'Global B');
+		assert.ok(infoMessages.length >= 2);
+		assert.ok(
+			host.broadcastMessages.filter(
+				(message) => (message as { type: string }).type === 'stateUpdate'
+			).length >= 2
+		);
+	});
 });
 
 function overrideWorkspaceFolders(folders: readonly vscode.WorkspaceFolder[]): void {
