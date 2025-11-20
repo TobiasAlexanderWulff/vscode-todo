@@ -25,6 +25,10 @@ export interface WebviewMessageEvent {
 	message: InboundMessage;
 }
 
+/**
+ * Manages the pair of WebviewView providers (global/projects) and forwards messages to the
+ * extension for handling. Handles readiness to buffer outbound messages until the webview loads.
+ */
 export class TodoWebviewHost implements vscode.Disposable {
 	private readonly disposables: vscode.Disposable[] = [];
 	private readonly providers = new Map<ProviderMode, TodoWebviewProvider>();
@@ -75,6 +79,10 @@ export class TodoWebviewHost implements vscode.Disposable {
 	}
 }
 
+/**
+ * Wraps a single WebviewView instance, ensuring HTML is generated with CSP and that messages are
+ * queued until the webview declares readiness.
+ */
 class TodoWebviewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
 	private webviewView: vscode.WebviewView | undefined;
 	private ready = false;
@@ -122,6 +130,7 @@ class TodoWebviewProvider implements vscode.WebviewViewProvider, vscode.Disposab
 		this.pendingMessages = [];
 	}
 
+	/** Builds the static HTML shell for the webview, including strict CSP and mode metadata. */
 	private buildHtml(webview: vscode.Webview): string {
 		const nonce = getNonce();
 		const scriptUri = webview.asWebviewUri(
@@ -164,6 +173,7 @@ class TodoWebviewProvider implements vscode.WebviewViewProvider, vscode.Disposab
 	}
 }
 
+/** Generates a 32-character nonce for CSP script tags. */
 function getNonce(): string {
 	const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 	let nonce = '';

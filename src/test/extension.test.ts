@@ -11,6 +11,7 @@ const workspaceFoldersDescriptor = Object.getOwnPropertyDescriptor(
 	'workspaceFolders'
 );
 
+/** Minimal in-memory stand-in for VS Code's Memento used by the repository during tests. */
 class InMemoryMemento implements vscode.Memento {
 	private readonly store = new Map<string, unknown>();
 	private syncedKeys: readonly string[] = [];
@@ -113,6 +114,7 @@ suite('Command handlers', () => {
 	const originalShowWarningMessage = vscode.window.showWarningMessage;
 	const originalShowInformationMessage = vscode.window.showInformationMessage;
 
+	/** Captures messages sent from command handlers without invoking real VS Code webviews. */
 	class FakeWebviewHost {
 		readonly postMessages: Array<{ mode: string; message: unknown }> = [];
 		readonly broadcastMessages: unknown[] = [];

@@ -48,6 +48,10 @@ export interface WebviewStrings {
 	removeLabel: string;
 }
 
+/**
+ * Collects localized strings and todos per scope so the webviews can render without touching VS
+ * Code APIs directly. Sorting happens here to centralize ordering concerns.
+ */
 export function buildWebviewStateSnapshot(repository: TodoRepository): WebviewStateSnapshot {
 	const globalTodos = repository
 		.getGlobalTodos()
@@ -92,6 +96,7 @@ export function buildWebviewStateSnapshot(repository: TodoRepository): WebviewSt
 	};
 }
 
+/** Normalizes a repository todo into the slim shape consumed by the webview runtime. */
 function toTodoState(todo: Todo): WebviewTodoState {
 	return {
 		id: todo.id,

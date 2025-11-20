@@ -51,6 +51,9 @@ interface CommandContext {
 	webviewHost: TodoWebviewHost;
 }
 
+/**
+ * Registers all extension commands so they can be invoked via palette, keybindings, or UI buttons.
+ */
 function registerCommands({ context, repository, webviewHost }: CommandContext): void {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('todo.addTodo', () => addTodo({ repository, webviewHost })),
@@ -99,6 +102,9 @@ export async function editTodo(context: HandlerContext): Promise<void> {
 	dispatchInlineEdit(context.webviewHost, target);
 }
 
+/**
+ * Toggles completion of the chosen todo, persists it, and shows a brief status bar confirmation.
+ */
 async function toggleTodoCompletion(context: HandlerContext): Promise<void> {
 	const target = await resolveTodoTarget(context);
 	if (!target) {
@@ -133,6 +139,9 @@ async function removeTodo(context: HandlerContext): Promise<void> {
 	broadcastWebviewState(context.webviewHost, context.repository);
 }
 
+/**
+ * Clears todos for the selected scope, deferring to scope picking when necessary.
+ */
 async function clearTodos(context: HandlerContext): Promise<void> {
 	const scope = await resolveScopeTarget();
 	if (!scope) {
@@ -141,6 +150,9 @@ async function clearTodos(context: HandlerContext): Promise<void> {
 	await clearScope(context, scope);
 }
 
+/**
+ * Clears todos for a scope with confirmations and an undo grace period backed by snapshots.
+ */
 async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<void> {
 	const todos = readTodos(context.repository, scope);
 	if (todos.length === 0) {
@@ -298,6 +310,9 @@ function normalizePositions(todos: Todo[]): Todo[] {
 		}));
 }
 
+/**
+ * Builds a localized, user-friendly label for a scope to reuse across UI prompts and toasts.
+ */
 function describeScope(scope: ScopeTarget): string {
 	if (scope.scope === 'global') {
 		return l10n.t('scope.global.label', 'Global');
@@ -362,6 +377,9 @@ async function focusTodoContainer(): Promise<void> {
 	await vscode.commands.executeCommand('workbench.view.extension.todoContainer');
 }
 
+/**
+ * Broadcasts the latest view state to any attached webviews so both panes stay in sync.
+ */
 function broadcastWebviewState(host: TodoWebviewHost, repository: TodoRepository): void {
 	const snapshot = buildWebviewStateSnapshot(repository);
 	host.broadcast({ type: 'stateUpdate', payload: snapshot });
@@ -377,6 +395,10 @@ function scopeFromWebviewScope(scope: WebviewScope): ScopeTarget | undefined {
 	return { scope: 'workspace', workspaceFolder: scope.workspaceFolder };
 }
 
+/**
+ * Reorders todos in place based on IDs received from the webview, filling gaps by keeping any
+ * unmapped items at the end. Returns whether positions actually changed.
+ */
 function reorderTodosByOrder(todos: Todo[], order: string[]): boolean {
 	const lookup = new Map<string, Todo>();
 	todos.forEach((todo) => lookup.set(todo.id, todo));
@@ -436,6 +458,7 @@ async function handleWebviewMutation(
 	message: WebviewMessageEvent['message'],
 	repository: TodoRepository
 ): Promise<boolean> {
+	// Return true when a mutation occurred so callers can decide whether to broadcast state.
 	switch (message.type) {
 		case 'commitCreate':
 			return handleWebviewCreate(repository, message.scope, message.title);
