@@ -132,12 +132,16 @@
     }
     applyPendingFocus();
   }
+  function formatCount(format, count) {
+    return format.replace("{0}", count.toString());
+  }
   function renderScopeSection(state, scope) {
+    var _a2;
     const section = document.createElement("section");
     section.className = "todo-section";
     const header = document.createElement("header");
     const title = document.createElement("h2");
-    title.textContent = `${state.label} (${state.todos.length})`;
+    title.textContent = formatCount((_a2 = snapshot == null ? void 0 : snapshot.strings.todoCountFormat) != null ? _a2 : "{0} TODOs", state.todos.length);
     header.appendChild(title);
     const actions = document.createElement("div");
     actions.className = "section-actions";
@@ -175,11 +179,15 @@
     return section;
   }
   function renderProjectsSection(projects) {
+    var _a2;
     const container = document.createElement("section");
     container.className = "todo-section";
     const header = document.createElement("header");
     const title = document.createElement("h2");
-    title.textContent = `${projects.label} (${projects.folders.length})`;
+    title.textContent = formatCount(
+      (_a2 = snapshot == null ? void 0 : snapshot.strings.projectCountFormat) != null ? _a2 : "{0} folders",
+      projects.folders.length
+    );
     header.appendChild(title);
     container.appendChild(header);
     if (projects.folders.length === 0) {
@@ -190,7 +198,7 @@
       return container;
     }
     projects.folders.forEach((folder) => {
-      var _a2;
+      var _a3;
       const scope = { scope: "workspace", workspaceFolder: folder.key };
       const inlineState = getInlineState(scope);
       const workspaceWrapper = document.createElement("div");
@@ -228,7 +236,7 @@
       if (folder.todos.length === 0 && !inlineState.creating) {
         const empty = document.createElement("p");
         empty.className = "empty-state";
-        empty.textContent = (_a2 = snapshot == null ? void 0 : snapshot.projects.emptyLabel) != null ? _a2 : "";
+        empty.textContent = (_a3 = snapshot == null ? void 0 : snapshot.projects.emptyLabel) != null ? _a3 : "";
         list.appendChild(empty);
       }
       attachDragHandlers(list, scope);

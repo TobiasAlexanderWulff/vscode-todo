@@ -46,6 +46,8 @@ export interface WebviewStrings {
 	inlineCreateHint: string;
 	completeLabel: string;
 	removeLabel: string;
+	todoCountFormat: string;
+	projectCountFormat: string;
 }
 
 /**
@@ -92,6 +94,8 @@ export function buildWebviewStateSnapshot(repository: TodoRepository): WebviewSt
 			),
 			completeLabel: l10n.t('command.todo.completeTodo.title', 'Complete TODO'),
 			removeLabel: l10n.t('command.todo.removeTodo.title', 'Remove TODO'),
+			todoCountFormat: l10n.t('tree.todo.count', '{0} TODOs'),
+			projectCountFormat: l10n.t('tree.projects.count', '{0} folders'),
 		},
 	};
 }
