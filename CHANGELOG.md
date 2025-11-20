@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+### Changed
+- Added repository metadata and MIT license for marketplace packaging.
+
 ## [0.1.0] - 2025-11-20
 
 ### Changed
