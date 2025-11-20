@@ -46,10 +46,6 @@ export interface WebviewStrings {
 	inlineCreateHint: string;
 	completeLabel: string;
 	removeLabel: string;
-	todoCountSingular: string;
-	todoCountPlural: string;
-	projectCountSingular: string;
-	projectCountPlural: string;
 }
 
 /**
@@ -96,10 +92,6 @@ export function buildWebviewStateSnapshot(repository: TodoRepository): WebviewSt
 			),
 			completeLabel: l10n.t('command.todo.completeTodo.title', 'Complete TODO'),
 			removeLabel: l10n.t('command.todo.removeTodo.title', 'Remove TODO'),
-			todoCountSingular: l10n.t('webview.count.todo.singular', '{0} TODO'),
-			todoCountPlural: l10n.t('webview.count.todo.plural', '{0} TODOs'),
-			projectCountSingular: l10n.t('webview.count.project.singular', '{0} folder'),
-			projectCountPlural: l10n.t('webview.count.project.plural', '{0} folders'),
 		},
 	};
 }
