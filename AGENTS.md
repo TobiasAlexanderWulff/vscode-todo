@@ -35,6 +35,7 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 - Do not amend existing commits; add new commits instead unless the user explicitly instructs otherwise.
 - After finishing a task that changes the codebase, propose a suitable conventional commit message and commit the changes.
 - When adding a whole new feature or fundamentally changing an existing one, consider creating a new branch for those changes.
+- Do not push; leave publishing to the user unless explicitly requested.
 
 ## Contribution Checklist
 1. Read `docs/vision.md` and confirm the change supports the vision.
