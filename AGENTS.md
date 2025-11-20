@@ -32,6 +32,7 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 - Type-check only: `npm run check-types`.
 - Continuous development: `npm run watch` (esbuild + tsc) and `npm run watch-tests` when iterating on specs.
 - Testing order before PR or release: `npm run compile` → `npm run test`.
+- Do not amend existing commits; add new commits instead unless the user explicitly instructs otherwise.
 
 ## Contribution Checklist
 1. Read `docs/vision.md` and confirm the change supports the vision.
