@@ -1,23 +1,25 @@
 # vscode-todo
 
-`vscode-todo` keeps the tasks that live in your head next to the files you are editing. The extension tracks two scopes in one Explorer tree:
+Lightweight todos that live where you work: keep personal tasks alongside project tasks in one Activity Bar home.
 
-- **Global / profile-bound:** todos that follow your active VS Code profile across every workspace.
-- **Project / workspace-bound:** todos that live alongside a specific workspace folder inside multi-root setups.
+## Two scopes, one view
+- **Global (profile-bound):** your personal list follows your VS Code profile everywhere.
+- **Projects (workspace-bound):** each workspace folder keeps its own todos; multi-root workspaces get one collapsible section per folder.
 
-The project vision, keyboard shortcuts, and UX principles live in [`docs/vision.md`](docs/vision.md). The high-level implementation roadmap is in [`docs/implementation-plan.md`](docs/implementation-plan.md).
+## What you can do
+- Inline add/edit directly inside the Activity Bar view—stay in flow, no modal inputs.
+- Drag-and-drop ordering with persisted `position` so your custom sort sticks.
+- Toggle completion, remove single items, or clear a list with layered confirmation and an Undo toast.
+- Keyboard-friendly commands and defaults (Ctrl/Cmd + Alt chord) always available via the Command Palette.
+- English and German localization via `@vscode/l10n`.
 
-## Current status
+## Quick start
+1) Open the **TODOs** icon in the Activity Bar.
+2) Click the plus in either Global or Projects (or press `Ctrl/Cmd + Alt + T`) to create a todo inline.
+3) Drag items to reorder; toggle completion by clicking the checkbox.
+4) Clear a list via the trash icon—confirmations respect `todo.confirmDestructiveActions` and offer Undo.
 
-Phase 2 brings the UI to life:
-
-- A dedicated TODOs icon now lives in the Activity Bar. Inside you’ll find two tree views: **Global TODOs** (profile scope) and **Project TODOs** (one collapsible section per workspace folder).
-- All commands (`todo.addTodo`, `todo.editTodo`, `todo.completeTodo`, `todo.removeTodo`, `todo.clearTodos`) are fully wired: add/edit todos, toggle completion, reorder via drag-and-drop, and clear scoped lists with confirmation + undo toasts.
-- Localization uses `@vscode/l10n` with English and German bundles in `/l10n`, so the TreeView and prompts adapt to the active VS Code language.
-- `TodoRepository` persists profile/workspace todos with hidden IDs, timestamps, ordering (`position`), and undo snapshots for destructive operations.
-
-## Commands & shortcuts
-
+## Commands and shortcuts
 | Command | Title | Default shortcut |
 | --- | --- | --- |
 | `todo.addTodo` | Add TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> |
@@ -26,19 +28,17 @@ Phase 2 brings the UI to life:
 | `todo.removeTodo` | Remove TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Backspace</kbd> |
 | `todo.clearTodos` | Clear TODO list | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>Backspace</kbd> |
 
-## Settings
-
+## Setting
 | Setting | Default | Description |
 | --- | --- | --- |
-| `todo.confirmDestructiveActions` | `true` | Require confirmation before clearing multiple todos and show an Undo toast afterwards. |
+| `todo.confirmDestructiveActions` | `true` | If enabled, asks before clearing multiple todos and shows an Undo toast. |
 
 ## Development
-
 ```bash
 npm install
-npm run compile
-npm run watch        # incremental build while coding
-npm run test         # runs the VS Code extension tests
+npm run compile       # type-check + lint + build
+npm run watch         # incremental build while coding
+npm run test          # VS Code extension tests
 ```
 
-The `docs/` folder contains the product vision, implementation plan, and agents guide that explain how to extend this project.
+See `docs/vision.md` for the product principles and `docs/implementation-plan.md` for the roadmap.

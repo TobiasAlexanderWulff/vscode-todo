@@ -24,5 +24,15 @@
 	"scope.global.detail": "Profilweite Liste",
 	"scope.global.label": "Global",
 	"scope.pick.title": "Wo soll das Todo gespeichert werden?",
-	"scope.workspace.unknown": "Projekt"
+	"scope.workspace.unknown": "Projekt",
+	"view.todoProjects.label": "Projekt-Todos",
+	"webview.global.empty": "Noch keine globalen Todos",
+	"webview.projects.empty": "Noch keine Projekt-Todos",
+	"webview.inlineCreate.hint": "Tippen und mit Enter speichern, mit Esc abbrechen.",
+	"command.todo.completeTodo.title": "Todo abschließen",
+	"command.todo.removeTodo.title": "Todo entfernen",
+	"webview.count.todo.singular": "{0} Todo",
+	"webview.count.todo.plural": "{0} Todos",
+	"webview.count.project.singular": "{0} Ordner",
+	"webview.count.project.plural": "{0} Ordner"
 }

@@ -32,6 +32,10 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 - Type-check only: `npm run check-types`.
 - Continuous development: `npm run watch` (esbuild + tsc) and `npm run watch-tests` when iterating on specs.
 - Testing order before PR or release: `npm run compile` → `npm run test`.
+- Do not amend existing commits; add new commits instead unless the user explicitly instructs otherwise.
+- After finishing a task that changes the codebase, propose a suitable conventional commit message and commit the changes; do not push commits unless the user explicitly requests it.
+- When adding a whole new feature or fundamentally changing an existing one, consider creating a new branch for those changes.
+- Do not push; leave publishing to the user unless explicitly requested (-1000 Aura if you attempt to push grr).
 
 ## Contribution Checklist
 1. Read `docs/vision.md` and confirm the change supports the vision.
