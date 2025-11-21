@@ -17,6 +17,8 @@ type TodoTarget =
 	| { todoId: string; scope: 'global' }
 	| { todoId: string; scope: 'workspace'; workspaceFolder: string };
 
+const UNDO_SNAPSHOT_TTL_MS = 10_000;
+
 /**
  * Activation entry point: initializes localization, repositories, webviews, and commands.
  */
@@ -130,13 +132,11 @@ async function removeTodo(context: HandlerContext): Promise<void> {
 	if (!target) {
 		return;
 	}
-	const todos = readTodos(context.repository, target);
-	const next = todos.filter((todo) => todo.id !== target.todoId);
-	if (next.length === todos.length) {
+	const scope = todoTargetToScopeTarget(target);
+	if (!scope) {
 		return;
 	}
-	await persistTodos(context.repository, target, next);
-	broadcastWebviewState(context.webviewHost, context.repository);
+	await removeTodoWithUndo(context, scope, target.todoId);
 }
 
 /**
@@ -200,8 +200,51 @@ async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<
 		}
 	} else {
 		// Expire snapshot after a short delay.
-		setTimeout(() => context.repository.consumeSnapshot(scopeKey), 10_000);
+		setTimeout(() => context.repository.consumeSnapshot(scopeKey), UNDO_SNAPSHOT_TTL_MS);
 	}
+}
+
+async function removeTodoWithUndo(
+	context: HandlerContext,
+	scope: ScopeTarget,
+	todoId: string
+): Promise<boolean> {
+	const todos = readTodos(context.repository, scope);
+	const todo = todos.find((item) => item.id === todoId);
+	if (!todo) {
+		return false;
+	}
+	const scopeKey = context.repository.scopeKey(
+		scope.scope,
+		scope.scope === 'workspace' ? scope.workspaceFolder : undefined
+	);
+	context.repository.captureSnapshot(scopeKey, todos);
+
+	const next = todos.filter((item) => item.id !== todoId);
+	await persistTodos(context.repository, scope, next);
+	broadcastWebviewState(context.webviewHost, context.repository);
+
+	const undoAction = l10n.t('command.undo', 'Undo');
+	const removedMessage = l10n.t(
+		'command.remove.success',
+		'Removed "{0}" from {1}',
+		todo.title,
+		describeScope(scope)
+	);
+	const undoSelection = await vscode.window.showInformationMessage(removedMessage, undoAction);
+	if (undoSelection === undoAction) {
+		const snapshot = context.repository.consumeSnapshot(scopeKey);
+		if (snapshot) {
+			await persistTodos(context.repository, scope, snapshot);
+			vscode.window.showInformationMessage(
+				l10n.t('command.undo.success', describeScope(scope))
+			);
+			broadcastWebviewState(context.webviewHost, context.repository);
+		}
+	} else {
+		setTimeout(() => context.repository.consumeSnapshot(scopeKey), UNDO_SNAPSHOT_TTL_MS);
+	}
+	return true;
 }
 
 async function resolveScopeTarget(): Promise<ScopeTarget | undefined> {
@@ -361,6 +404,16 @@ function todoTargetToWebviewScope(target: TodoTarget): WebviewScope | undefined 
 	return { scope: 'workspace', workspaceFolder: target.workspaceFolder };
 }
 
+function todoTargetToScopeTarget(target: TodoTarget): ScopeTarget | undefined {
+	if (target.scope === 'global') {
+		return { scope: 'global' };
+	}
+	if (!target.workspaceFolder) {
+		return undefined;
+	}
+	return { scope: 'workspace', workspaceFolder: target.workspaceFolder };
+}
+
 function scopeToProviderMode(scope: ScopeTarget): ProviderMode {
 	return scope.scope === 'global' ? 'global' : 'projects';
 }
@@ -439,31 +492,59 @@ export async function handleWebviewMessage(
 		await clearScope({ repository, webviewHost }, scope);
 		return;
 	}
-	const mutationPerformed = await handleWebviewMutation(message, repository);
-	if (!mutationPerformed) {
+	const mutationResult = await handleWebviewMutation(message, { repository, webviewHost });
+	if (!mutationResult.mutated) {
 		return;
 	}
-	broadcastWebviewState(webviewHost, repository);
+	if (!mutationResult.broadcastHandled) {
+		broadcastWebviewState(webviewHost, repository);
+	}
+}
+
+interface MutationResult {
+	mutated: boolean;
+	broadcastHandled?: boolean;
 }
 
 async function handleWebviewMutation(
 	message: WebviewMessageEvent['message'],
-	repository: TodoRepository
-): Promise<boolean> {
-	// Return true when a mutation occurred so callers can decide whether to broadcast state.
+	context: HandlerContext
+): Promise<MutationResult> {
+	// Return mutation details so callers can decide whether to broadcast state.
 	switch (message.type) {
 		case 'commitCreate':
-			return handleWebviewCreate(repository, message.scope, message.title);
+			return {
+				mutated: await handleWebviewCreate(context.repository, message.scope, message.title),
+			};
 		case 'commitEdit':
-			return handleWebviewEdit(repository, message.scope, message.todoId, message.title);
+			return {
+				mutated: await handleWebviewEdit(
+					context.repository,
+					message.scope,
+					message.todoId,
+					message.title
+				),
+			};
 		case 'toggleComplete':
-			return handleWebviewToggle(repository, message.scope, message.todoId);
+			return {
+				mutated: await handleWebviewToggle(
+					context.repository,
+					message.scope,
+					message.todoId
+				),
+			};
 		case 'removeTodo':
-			return handleWebviewRemove(repository, message.scope, message.todoId);
+			return handleWebviewRemoveWithUndo(context, message.scope, message.todoId);
 		case 'reorderTodos':
-			return handleWebviewReorder(repository, message.scope, message.order);
+			return {
+				mutated: await handleWebviewReorder(
+					context.repository,
+					message.scope,
+					message.order
+				),
+			};
 		default:
-			return false;
+			return { mutated: false };
 	}
 }
 
@@ -533,22 +614,17 @@ async function handleWebviewToggle(
 	return true;
 }
 
-async function handleWebviewRemove(
-	repository: TodoRepository,
+async function handleWebviewRemoveWithUndo(
+	context: HandlerContext,
 	scope: WebviewScope,
 	todoId: string
-): Promise<boolean> {
+): Promise<MutationResult> {
 	const target = scopeFromWebviewScope(scope);
 	if (!target) {
-		return false;
+		return { mutated: false };
 	}
-	const todos = readTodos(repository, target);
-	const next = todos.filter((todo) => todo.id !== todoId);
-	if (next.length === todos.length) {
-		return false;
-	}
-	await persistTodos(repository, target, next);
-	return true;
+	const removed = await removeTodoWithUndo(context, target, todoId);
+	return { mutated: removed, broadcastHandled: removed };
 }
 
 async function handleWebviewReorder(

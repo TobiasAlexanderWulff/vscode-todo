@@ -17,6 +17,7 @@
 	"command.clear.confirmAction": "Löschen",
 	"command.clear.confirmTitle": "Alle Todos für {0} löschen?",
 	"command.clear.success": "Todos für {0} gelöscht",
+	"command.remove.success": "\"{0}\" aus {1} entfernt",
 	"command.undo": "Rückgängig",
 	"command.undo.success": "Todos für {0} wiederhergestellt",
 	"command.noTodos": "Erstelle zuerst ein Todo und versuche es erneut.",

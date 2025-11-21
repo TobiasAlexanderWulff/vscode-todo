@@ -17,6 +17,7 @@
 	"command.clear.confirmAction": "Clear",
 	"command.clear.confirmTitle": "Clear all TODOs for {0}?",
 	"command.clear.success": "Cleared TODOs for {0}",
+	"command.remove.success": "Removed \"{0}\" from {1}",
 	"command.undo": "Undo",
 	"command.undo.success": "Restored TODOs for {0}",
 	"command.noTodos": "Create a TODO first, then try again.",
