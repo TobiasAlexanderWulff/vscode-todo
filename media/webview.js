@@ -135,6 +135,12 @@
   function renderScopeSection(state, scope) {
     const section = document.createElement("section");
     section.className = "todo-section";
+    const header = document.createElement("header");
+    const title = document.createElement("h2");
+    title.textContent = state.label;
+    header.appendChild(title);
+    header.appendChild(renderSectionActions(scope));
+    section.appendChild(header);
     const list = document.createElement("div");
     list.className = "todo-list";
     const inlineState = getInlineState(scope);
@@ -173,21 +179,9 @@
       const workspaceTitle = document.createElement("div");
       workspaceTitle.className = "workspace-title";
       workspaceTitle.textContent = folder.label;
-      const workspaceActions = document.createElement("div");
-      workspaceActions.className = "section-actions";
-      const addButton = document.createElement("button");
-      addButton.className = "button-link";
-      addButton.innerHTML = "<span>Add</span>";
-      addButton.addEventListener("click", () => startInlineCreate(scope));
-      workspaceActions.appendChild(addButton);
-      const clearButton = document.createElement("button");
-      clearButton.className = "button-link";
-      clearButton.innerHTML = "<span>Clear</span>";
-      clearButton.addEventListener("click", () => postMessage({ type: "clearScope", scope }));
-      workspaceActions.appendChild(clearButton);
       const titleRow = document.createElement("header");
       titleRow.appendChild(workspaceTitle);
-      titleRow.appendChild(workspaceActions);
+      titleRow.appendChild(renderSectionActions(scope));
       workspaceWrapper.appendChild(titleRow);
       const list = document.createElement("div");
       list.className = "todo-list";
@@ -208,6 +202,22 @@
       container.appendChild(workspaceWrapper);
     });
     return container;
+  }
+  function renderSectionActions(scope) {
+    var _a2, _b;
+    const actions = document.createElement("div");
+    actions.className = "section-actions";
+    const addButton = document.createElement("button");
+    addButton.className = "button-link";
+    addButton.innerHTML = `<span>${(_a2 = snapshot == null ? void 0 : snapshot.strings.addLabel) != null ? _a2 : "Add"}</span>`;
+    addButton.addEventListener("click", () => startInlineCreate(scope));
+    actions.appendChild(addButton);
+    const clearButton = document.createElement("button");
+    clearButton.className = "button-link";
+    clearButton.innerHTML = `<span>${(_b = snapshot == null ? void 0 : snapshot.strings.clearLabel) != null ? _b : "Clear"}</span>`;
+    clearButton.addEventListener("click", () => postMessage({ type: "clearScope", scope }));
+    actions.appendChild(clearButton);
+    return actions;
   }
   function renderInlineCreateRow(scope) {
     var _a2, _b;

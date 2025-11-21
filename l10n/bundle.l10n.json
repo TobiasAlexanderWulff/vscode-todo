@@ -29,6 +29,8 @@
 	"webview.global.empty": "No global TODOs yet",
 	"webview.projects.empty": "No project TODOs yet",
 	"webview.inlineCreate.hint": "Type and press Enter to save, Esc to cancel.",
+	"webview.section.add": "Add",
+	"webview.section.clear": "Clear",
 	"command.todo.completeTodo.title": "Complete TODO",
 	"command.todo.removeTodo.title": "Remove TODO"
 }

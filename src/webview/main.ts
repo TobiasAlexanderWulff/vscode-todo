@@ -66,6 +66,8 @@ interface WebviewStrings {
 	inlineCreateHint: string;
 	completeLabel: string;
 	removeLabel: string;
+	addLabel: string;
+	clearLabel: string;
 }
 
 interface InlineState {
@@ -225,6 +227,13 @@ function renderScopeSection(state: WebviewScopeState, scope: WebviewScope): HTML
 	const section = document.createElement('section');
 	section.className = 'todo-section';
 
+	const header = document.createElement('header');
+	const title = document.createElement('h2');
+	title.textContent = state.label;
+	header.appendChild(title);
+	header.appendChild(renderSectionActions(scope));
+	section.appendChild(header);
+
 	const list = document.createElement('div');
 	list.className = 'todo-list';
 	const inlineState = getInlineState(scope);
@@ -272,24 +281,9 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 		workspaceTitle.className = 'workspace-title';
 		workspaceTitle.textContent = folder.label;
 
-		const workspaceActions = document.createElement('div');
-		workspaceActions.className = 'section-actions';
-
-		const addButton = document.createElement('button');
-		addButton.className = 'button-link';
-		addButton.innerHTML = '<span>Add</span>';
-		addButton.addEventListener('click', () => startInlineCreate(scope));
-		workspaceActions.appendChild(addButton);
-
-		const clearButton = document.createElement('button');
-		clearButton.className = 'button-link';
-		clearButton.innerHTML = '<span>Clear</span>';
-		clearButton.addEventListener('click', () => postMessage({ type: 'clearScope', scope }));
-		workspaceActions.appendChild(clearButton);
-
 		const titleRow = document.createElement('header');
 		titleRow.appendChild(workspaceTitle);
-		titleRow.appendChild(workspaceActions);
+		titleRow.appendChild(renderSectionActions(scope));
 
 		workspaceWrapper.appendChild(titleRow);
 
@@ -317,6 +311,25 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 	});
 
 	return container;
+}
+
+function renderSectionActions(scope: WebviewScope): HTMLElement {
+	const actions = document.createElement('div');
+	actions.className = 'section-actions';
+
+	const addButton = document.createElement('button');
+	addButton.className = 'button-link';
+	addButton.innerHTML = `<span>${snapshot?.strings.addLabel ?? 'Add'}</span>`;
+	addButton.addEventListener('click', () => startInlineCreate(scope));
+	actions.appendChild(addButton);
+
+	const clearButton = document.createElement('button');
+	clearButton.className = 'button-link';
+	clearButton.innerHTML = `<span>${snapshot?.strings.clearLabel ?? 'Clear'}</span>`;
+	clearButton.addEventListener('click', () => postMessage({ type: 'clearScope', scope }));
+	actions.appendChild(clearButton);
+
+	return actions;
 }
 
 function renderInlineCreateRow(scope: WebviewScope): HTMLElement {

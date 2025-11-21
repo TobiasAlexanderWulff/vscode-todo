@@ -29,6 +29,8 @@
 	"webview.global.empty": "Noch keine globalen Todos",
 	"webview.projects.empty": "Noch keine Projekt-Todos",
 	"webview.inlineCreate.hint": "Tippen und mit Enter speichern, mit Esc abbrechen.",
+	"webview.section.add": "Hinzufügen",
+	"webview.section.clear": "Leeren",
 	"command.todo.completeTodo.title": "Todo abschließen",
 	"command.todo.removeTodo.title": "Todo entfernen"
 }

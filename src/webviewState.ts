@@ -46,6 +46,8 @@ export interface WebviewStrings {
 	inlineCreateHint: string;
 	completeLabel: string;
 	removeLabel: string;
+	addLabel: string;
+	clearLabel: string;
 }
 
 /**
@@ -92,6 +94,8 @@ export function buildWebviewStateSnapshot(repository: TodoRepository): WebviewSt
 			),
 			completeLabel: l10n.t('command.todo.completeTodo.title', 'Complete TODO'),
 			removeLabel: l10n.t('command.todo.removeTodo.title', 'Remove TODO'),
+			addLabel: l10n.t('webview.section.add', 'Add'),
+			clearLabel: l10n.t('webview.section.clear', 'Clear'),
 		},
 	};
 }
