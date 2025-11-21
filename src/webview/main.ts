@@ -253,7 +253,7 @@ function renderScopeSection(state: WebviewScopeState, scope: WebviewScope): HTML
 		list.appendChild(empty);
 	}
 
-	attachDragHandlers(list, scope);
+	attachDragHandlers(list, scope, inlineState);
 	section.appendChild(list);
 	return section;
 }
@@ -305,7 +305,7 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 			list.appendChild(empty);
 		}
 
-		attachDragHandlers(list, scope);
+		attachDragHandlers(list, scope, inlineState);
 		workspaceWrapper.appendChild(list);
 		container.appendChild(workspaceWrapper);
 	});
@@ -368,7 +368,7 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	const row = document.createElement('div');
 	row.className = 'todo-item';
 	row.dataset.todoId = todo.id;
-	row.draggable = true;
+	row.draggable = !inlineState.editingId;
 
 	if (inlineState.editingId === todo.id) {
 		const input = document.createElement('input');
@@ -506,9 +506,12 @@ function commitInlineEdit(scope: WebviewScope, todoId: string, value: string): v
 	persistInlineState();
 }
 
-function attachDragHandlers(list: HTMLElement, scope: WebviewScope): void {
+function attachDragHandlers(list: HTMLElement, scope: WebviewScope, inlineState: InlineState): void {
 	let draggedId: string | undefined;
 	list.addEventListener('dragstart', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		const item = (event.target as HTMLElement | null)?.closest<HTMLElement>('.todo-item');
 		if (!item || !item.dataset.todoId) {
 			return;
@@ -517,6 +520,9 @@ function attachDragHandlers(list: HTMLElement, scope: WebviewScope): void {
 		event.dataTransfer?.setData('text/plain', draggedId);
 	});
 	list.addEventListener('dragover', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		if (!draggedId) {
 			return;
 		}
@@ -528,10 +534,16 @@ function attachDragHandlers(list: HTMLElement, scope: WebviewScope): void {
 		target.classList.add('drag-over');
 	});
 	list.addEventListener('dragleave', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('.todo-item');
 		target?.classList.remove('drag-over');
 	});
 	list.addEventListener('drop', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		event.preventDefault();
 		const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('.todo-item');
 		if (!target || !target.dataset.todoId || !draggedId || target.dataset.todoId === draggedId) {

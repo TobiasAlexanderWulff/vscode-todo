@@ -156,7 +156,7 @@
       empty.textContent = state.emptyLabel;
       list.appendChild(empty);
     }
-    attachDragHandlers(list, scope);
+    attachDragHandlers(list, scope, inlineState);
     section.appendChild(list);
     return section;
   }
@@ -197,7 +197,7 @@
         empty.textContent = (_a2 = snapshot == null ? void 0 : snapshot.projects.emptyLabel) != null ? _a2 : "";
         list.appendChild(empty);
       }
-      attachDragHandlers(list, scope);
+      attachDragHandlers(list, scope, inlineState);
       workspaceWrapper.appendChild(list);
       container.appendChild(workspaceWrapper);
     });
@@ -255,7 +255,7 @@
     const row = document.createElement("div");
     row.className = "todo-item";
     row.dataset.todoId = todo.id;
-    row.draggable = true;
+    row.draggable = !inlineState.editingId;
     if (inlineState.editingId === todo.id) {
       const input = document.createElement("input");
       input.className = "todo-input";
@@ -378,10 +378,13 @@
     state.editingId = void 0;
     persistInlineState();
   }
-  function attachDragHandlers(list, scope) {
+  function attachDragHandlers(list, scope, inlineState) {
     let draggedId;
     list.addEventListener("dragstart", (event) => {
       var _a2, _b;
+      if (inlineState.editingId) {
+        return;
+      }
       const item = (_a2 = event.target) == null ? void 0 : _a2.closest(".todo-item");
       if (!item || !item.dataset.todoId) {
         return;
@@ -391,6 +394,9 @@
     });
     list.addEventListener("dragover", (event) => {
       var _a2;
+      if (inlineState.editingId) {
+        return;
+      }
       if (!draggedId) {
         return;
       }
@@ -403,11 +409,17 @@
     });
     list.addEventListener("dragleave", (event) => {
       var _a2;
+      if (inlineState.editingId) {
+        return;
+      }
       const target = (_a2 = event.target) == null ? void 0 : _a2.closest(".todo-item");
       target == null ? void 0 : target.classList.remove("drag-over");
     });
     list.addEventListener("drop", (event) => {
       var _a2;
+      if (inlineState.editingId) {
+        return;
+      }
       event.preventDefault();
       const target = (_a2 = event.target) == null ? void 0 : _a2.closest(".todo-item");
       if (!target || !target.dataset.todoId || !draggedId || target.dataset.todoId === draggedId) {
