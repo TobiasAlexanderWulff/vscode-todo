@@ -392,6 +392,10 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		assert.strictEqual(restored.length, 1);
 		assert.strictEqual(restored[0].title, 'Remove me');
 		assert.ok(infoMessages.length >= 2);
+		const removedMessages = ['Removed "Remove me" from Global', 'command.remove.success'];
+		const restoredMessages = ['Restored "Remove me" to Global', 'command.undo.todo.success'];
+		assert.ok(removedMessages.includes(infoMessages[0][0]));
+		assert.ok(restoredMessages.includes(infoMessages[1][0]));
 		assert.ok(
 			host.broadcastMessages.filter(
 				(message) => (message as { type: string }).type === 'stateUpdate'

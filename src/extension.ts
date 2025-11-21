@@ -237,7 +237,12 @@ async function removeTodoWithUndo(
 		if (snapshot) {
 			await persistTodos(context.repository, scope, snapshot);
 			vscode.window.showInformationMessage(
-				l10n.t('command.undo.success', describeScope(scope))
+				l10n.t(
+					'command.undo.todo.success',
+					'Restored "{0}" to {1}',
+					todo.title,
+					describeScope(scope)
+				)
 			);
 			broadcastWebviewState(context.webviewHost, context.repository);
 		}

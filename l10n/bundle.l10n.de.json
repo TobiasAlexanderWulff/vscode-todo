@@ -20,6 +20,7 @@
 	"command.remove.success": "\"{0}\" aus {1} entfernt",
 	"command.undo": "Rückgängig",
 	"command.undo.success": "Todos für {0} wiederhergestellt",
+	"command.undo.todo.success": "\"{0}\" in {1} wiederhergestellt",
 	"command.noTodos": "Erstelle zuerst ein Todo und versuche es erneut.",
 	"command.pickTodo": "Todo auswählen",
 	"scope.global.detail": "Profilweite Liste",
