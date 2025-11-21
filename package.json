@@ -45,32 +45,6 @@
       ]
     },
     "menus": {
-      "view/title": [
-        {
-          "command": "todo.addTodo",
-          "when": "view == todoGlobalView",
-          "group": "navigation@1",
-          "icon": "$(add)"
-        },
-        {
-          "command": "todo.clearTodos",
-          "when": "view == todoGlobalView",
-          "group": "navigation@2",
-          "icon": "$(trash)"
-        },
-        {
-          "command": "todo.addTodo",
-          "when": "view == todoProjectsView",
-          "group": "navigation@1",
-          "icon": "$(add)"
-        },
-        {
-          "command": "todo.clearTodos",
-          "when": "view == todoProjectsView",
-          "group": "navigation@2",
-          "icon": "$(trash)"
-        }
-      ],
       "view/item/context": []
     },
     "commands": [
