@@ -413,8 +413,8 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	toggleButton.className = 'todo-action';
 	toggleButton.title = snapshot?.strings.completeLabel ?? 'Toggle complete';
 	toggleButton.innerHTML = todo.completed
-		? '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14C11.3137 14 14 11.3137 14 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 8V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 8H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
-		: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8L7 10L11 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+		? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.5L7 11L11.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+		: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/></svg>';
 	toggleButton.addEventListener('click', () => postMessage({
 		type: 'toggleComplete',
 		scope,
