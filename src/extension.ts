@@ -157,7 +157,7 @@ async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<
 	const todos = readTodos(context.repository, scope);
 	if (todos.length === 0) {
 		vscode.window.showInformationMessage(
-			l10n.t('command.clear.empty', 'No TODOs to clear for {0}', describeScope(scope))
+			l10n.t('command.clear.empty', describeScope(scope))
 		);
 		return;
 	}
@@ -166,11 +166,7 @@ async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<
 		.get<boolean>('confirmDestructiveActions', true);
 	if (confirmSetting && todos.length > 1) {
 		const confirmAction = l10n.t('command.clear.confirmAction', 'Clear');
-		const title = l10n.t(
-			'command.clear.confirmTitle',
-			'Clear all TODOs for {0}?',
-			describeScope(scope)
-		);
+		const title = l10n.t('command.clear.confirmTitle', describeScope(scope));
 		const selection = await vscode.window.showWarningMessage(
 			title,
 			{ modal: true },
@@ -188,11 +184,7 @@ async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<
 	await persistTodos(context.repository, scope, []);
 	broadcastWebviewState(context.webviewHost, context.repository);
 	const undoAction = l10n.t('command.undo', 'Undo');
-	const clearedMessage = l10n.t(
-		'command.clear.success',
-		'Cleared TODOs for {0}',
-		describeScope(scope)
-	);
+	const clearedMessage = l10n.t('command.clear.success', describeScope(scope));
 	const undoSelection = await vscode.window.showInformationMessage(
 		clearedMessage,
 		undoAction
@@ -202,7 +194,7 @@ async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<
 		if (snapshot) {
 			await persistTodos(context.repository, scope, snapshot);
 			vscode.window.showInformationMessage(
-				l10n.t('command.undo.success', 'Restored TODOs for {0}', describeScope(scope))
+				l10n.t('command.undo.success', describeScope(scope))
 			);
 			broadcastWebviewState(context.webviewHost, context.repository);
 		}
