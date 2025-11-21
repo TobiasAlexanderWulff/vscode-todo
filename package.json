@@ -1,6 +1,6 @@
 {
-  "name": "vscode-todo",
-  "displayName": "vscode-todo",
+  "name": "vscode-todolist",
+  "displayName": "vscode-todolist",
   "description": "Keep your project and profile TODO lists up to date.",
   "publisher": "TobiasWulff",
   "version": "0.2.1",
