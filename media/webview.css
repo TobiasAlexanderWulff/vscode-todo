@@ -181,7 +181,8 @@ main {
   padding: 0.3rem 0.4rem;
 }
 
-.workspace-section {
+/* Add spacing only between workspace sections so the first matches the global header offset */
+.workspace-section + .workspace-section {
   margin-top: 0.75rem;
 }
 
