@@ -2,9 +2,15 @@
   "name": "vscode-todo",
   "displayName": "vscode-todo",
   "description": "Keep your project and profile TODO lists up to date.",
-  "version": "0.0.1",
+  "version": "0.2.0",
+  "icon": "resources/store-icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tobiasalexanderwulff/vscode-todo.git"
+  },
   "engines": {
-    "vscode": "^1.106.1"
+    "vscode": "^1.104.0"
   },
   "categories": [
     "Other"
@@ -39,32 +45,6 @@
       ]
     },
     "menus": {
-      "view/title": [
-        {
-          "command": "todo.addTodo",
-          "when": "view == todoGlobalView",
-          "group": "navigation@1",
-          "icon": "$(add)"
-        },
-        {
-          "command": "todo.clearTodos",
-          "when": "view == todoGlobalView",
-          "group": "navigation@2",
-          "icon": "$(trash)"
-        },
-        {
-          "command": "todo.addTodo",
-          "when": "view == todoProjectsView",
-          "group": "navigation@1",
-          "icon": "$(add)"
-        },
-        {
-          "command": "todo.clearTodos",
-          "when": "view == todoProjectsView",
-          "group": "navigation@2",
-          "icon": "$(trash)"
-        }
-      ],
       "view/item/context": []
     },
     "commands": [
@@ -151,7 +131,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "@types/vscode": "^1.106.1",
+    "@types/vscode": "^1.104.0",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "@vscode/test-cli": "^0.0.11",

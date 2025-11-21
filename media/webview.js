@@ -135,6 +135,12 @@
   function renderScopeSection(state, scope) {
     const section = document.createElement("section");
     section.className = "todo-section";
+    const header = document.createElement("header");
+    const title = document.createElement("h2");
+    title.textContent = state.label;
+    header.appendChild(title);
+    header.appendChild(renderSectionActions(scope));
+    section.appendChild(header);
     const list = document.createElement("div");
     list.className = "todo-list";
     const inlineState = getInlineState(scope);
@@ -150,7 +156,7 @@
       empty.textContent = state.emptyLabel;
       list.appendChild(empty);
     }
-    attachDragHandlers(list, scope);
+    attachDragHandlers(list, scope, inlineState);
     section.appendChild(list);
     return section;
   }
@@ -173,24 +179,9 @@
       const workspaceTitle = document.createElement("div");
       workspaceTitle.className = "workspace-title";
       workspaceTitle.textContent = folder.label;
-      const workspaceActions = document.createElement("div");
-      workspaceActions.className = "section-actions";
-      const addButton = document.createElement("button");
-      addButton.className = "button-link";
-      addButton.textContent = "+ Add";
-      addButton.addEventListener("click", () => startInlineCreate(scope));
-      workspaceActions.appendChild(addButton);
-      const clearButton = document.createElement("button");
-      clearButton.className = "button-link";
-      clearButton.textContent = "Clear";
-      clearButton.addEventListener("click", () => postMessage({ type: "clearScope", scope }));
-      workspaceActions.appendChild(clearButton);
-      const titleRow = document.createElement("div");
-      titleRow.style.display = "flex";
-      titleRow.style.justifyContent = "space-between";
-      titleRow.style.alignItems = "center";
+      const titleRow = document.createElement("header");
       titleRow.appendChild(workspaceTitle);
-      titleRow.appendChild(workspaceActions);
+      titleRow.appendChild(renderSectionActions(scope));
       workspaceWrapper.appendChild(titleRow);
       const list = document.createElement("div");
       list.className = "todo-list";
@@ -206,11 +197,27 @@
         empty.textContent = (_a2 = snapshot == null ? void 0 : snapshot.projects.emptyLabel) != null ? _a2 : "";
         list.appendChild(empty);
       }
-      attachDragHandlers(list, scope);
+      attachDragHandlers(list, scope, inlineState);
       workspaceWrapper.appendChild(list);
       container.appendChild(workspaceWrapper);
     });
     return container;
+  }
+  function renderSectionActions(scope) {
+    var _a2, _b;
+    const actions = document.createElement("div");
+    actions.className = "section-actions";
+    const addButton = document.createElement("button");
+    addButton.className = "button-link";
+    addButton.innerHTML = `<span>${(_a2 = snapshot == null ? void 0 : snapshot.strings.addLabel) != null ? _a2 : "Add"}</span>`;
+    addButton.addEventListener("click", () => startInlineCreate(scope));
+    actions.appendChild(addButton);
+    const clearButton = document.createElement("button");
+    clearButton.className = "button-link";
+    clearButton.innerHTML = `<span>${(_b = snapshot == null ? void 0 : snapshot.strings.clearLabel) != null ? _b : "Clear"}</span>`;
+    clearButton.addEventListener("click", () => postMessage({ type: "clearScope", scope }));
+    actions.appendChild(clearButton);
+    return actions;
   }
   function renderInlineCreateRow(scope) {
     var _a2, _b;
@@ -248,7 +255,7 @@
     const row = document.createElement("div");
     row.className = "todo-item";
     row.dataset.todoId = todo.id;
-    row.draggable = true;
+    row.draggable = !inlineState.editingId;
     if (inlineState.editingId === todo.id) {
       const input = document.createElement("input");
       input.className = "todo-input";
@@ -265,9 +272,16 @@
         }
       });
       input.addEventListener("blur", () => {
-        if (input.value.trim().length === 0) {
+        const trimmed = input.value.trim();
+        if (trimmed.length === 0) {
           exitInlineEdit(scope);
+          return;
         }
+        if (trimmed === todo.title) {
+          exitInlineEdit(scope);
+          return;
+        }
+        commitInlineEdit(scope, todo.id, trimmed);
       });
       row.appendChild(input);
     } else {
@@ -282,7 +296,7 @@
     const toggleButton = document.createElement("button");
     toggleButton.className = "todo-action";
     toggleButton.title = (_a2 = snapshot == null ? void 0 : snapshot.strings.completeLabel) != null ? _a2 : "Toggle complete";
-    toggleButton.textContent = todo.completed ? "\u21BA" : "\u2713";
+    toggleButton.innerHTML = todo.completed ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14C11.3137 14 14 11.3137 14 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 8V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 8H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8L7 10L11 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     toggleButton.addEventListener("click", () => postMessage({
       type: "toggleComplete",
       scope,
@@ -291,13 +305,13 @@
     actions.appendChild(toggleButton);
     const editButton = document.createElement("button");
     editButton.className = "todo-action";
-    editButton.textContent = "\u270E";
+    editButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path transform="translate(0, 2)" d="M12.5 3.5L10 1L3 8V10.5H5.5L12.5 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     editButton.title = "Edit";
     editButton.addEventListener("click", () => startInlineEdit(scope, todo.id));
     actions.appendChild(editButton);
     const removeButton = document.createElement("button");
     removeButton.className = "todo-action";
-    removeButton.textContent = "\u2715";
+    removeButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
     removeButton.title = (_b = snapshot == null ? void 0 : snapshot.strings.removeLabel) != null ? _b : "Remove";
     removeButton.addEventListener("click", () => postMessage({
       type: "removeTodo",
@@ -364,10 +378,13 @@
     state.editingId = void 0;
     persistInlineState();
   }
-  function attachDragHandlers(list, scope) {
+  function attachDragHandlers(list, scope, inlineState) {
     let draggedId;
     list.addEventListener("dragstart", (event) => {
       var _a2, _b;
+      if (inlineState.editingId) {
+        return;
+      }
       const item = (_a2 = event.target) == null ? void 0 : _a2.closest(".todo-item");
       if (!item || !item.dataset.todoId) {
         return;
@@ -377,6 +394,9 @@
     });
     list.addEventListener("dragover", (event) => {
       var _a2;
+      if (inlineState.editingId) {
+        return;
+      }
       if (!draggedId) {
         return;
       }
@@ -389,11 +409,17 @@
     });
     list.addEventListener("dragleave", (event) => {
       var _a2;
+      if (inlineState.editingId) {
+        return;
+      }
       const target = (_a2 = event.target) == null ? void 0 : _a2.closest(".todo-item");
       target == null ? void 0 : target.classList.remove("drag-over");
     });
     list.addEventListener("drop", (event) => {
       var _a2;
+      if (inlineState.editingId) {
+        return;
+      }
       event.preventDefault();
       const target = (_a2 = event.target) == null ? void 0 : _a2.closest(".todo-item");
       if (!target || !target.dataset.todoId || !draggedId || target.dataset.todoId === draggedId) {

@@ -66,6 +66,8 @@ interface WebviewStrings {
 	inlineCreateHint: string;
 	completeLabel: string;
 	removeLabel: string;
+	addLabel: string;
+	clearLabel: string;
 }
 
 interface InlineState {
@@ -225,6 +227,13 @@ function renderScopeSection(state: WebviewScopeState, scope: WebviewScope): HTML
 	const section = document.createElement('section');
 	section.className = 'todo-section';
 
+	const header = document.createElement('header');
+	const title = document.createElement('h2');
+	title.textContent = state.label;
+	header.appendChild(title);
+	header.appendChild(renderSectionActions(scope));
+	section.appendChild(header);
+
 	const list = document.createElement('div');
 	list.className = 'todo-list';
 	const inlineState = getInlineState(scope);
@@ -244,7 +253,7 @@ function renderScopeSection(state: WebviewScopeState, scope: WebviewScope): HTML
 		list.appendChild(empty);
 	}
 
-	attachDragHandlers(list, scope);
+	attachDragHandlers(list, scope, inlineState);
 	section.appendChild(list);
 	return section;
 }
@@ -272,27 +281,9 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 		workspaceTitle.className = 'workspace-title';
 		workspaceTitle.textContent = folder.label;
 
-		const workspaceActions = document.createElement('div');
-		workspaceActions.className = 'section-actions';
-
-		const addButton = document.createElement('button');
-		addButton.className = 'button-link';
-		addButton.textContent = '+ Add';
-		addButton.addEventListener('click', () => startInlineCreate(scope));
-		workspaceActions.appendChild(addButton);
-
-		const clearButton = document.createElement('button');
-		clearButton.className = 'button-link';
-		clearButton.textContent = 'Clear';
-		clearButton.addEventListener('click', () => postMessage({ type: 'clearScope', scope }));
-		workspaceActions.appendChild(clearButton);
-
-		const titleRow = document.createElement('div');
-		titleRow.style.display = 'flex';
-		titleRow.style.justifyContent = 'space-between';
-		titleRow.style.alignItems = 'center';
+		const titleRow = document.createElement('header');
 		titleRow.appendChild(workspaceTitle);
-		titleRow.appendChild(workspaceActions);
+		titleRow.appendChild(renderSectionActions(scope));
 
 		workspaceWrapper.appendChild(titleRow);
 
@@ -314,12 +305,31 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 			list.appendChild(empty);
 		}
 
-		attachDragHandlers(list, scope);
+		attachDragHandlers(list, scope, inlineState);
 		workspaceWrapper.appendChild(list);
 		container.appendChild(workspaceWrapper);
 	});
 
 	return container;
+}
+
+function renderSectionActions(scope: WebviewScope): HTMLElement {
+	const actions = document.createElement('div');
+	actions.className = 'section-actions';
+
+	const addButton = document.createElement('button');
+	addButton.className = 'button-link';
+	addButton.innerHTML = `<span>${snapshot?.strings.addLabel ?? 'Add'}</span>`;
+	addButton.addEventListener('click', () => startInlineCreate(scope));
+	actions.appendChild(addButton);
+
+	const clearButton = document.createElement('button');
+	clearButton.className = 'button-link';
+	clearButton.innerHTML = `<span>${snapshot?.strings.clearLabel ?? 'Clear'}</span>`;
+	clearButton.addEventListener('click', () => postMessage({ type: 'clearScope', scope }));
+	actions.appendChild(clearButton);
+
+	return actions;
 }
 
 function renderInlineCreateRow(scope: WebviewScope): HTMLElement {
@@ -358,7 +368,7 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	const row = document.createElement('div');
 	row.className = 'todo-item';
 	row.dataset.todoId = todo.id;
-	row.draggable = true;
+	row.draggable = !inlineState.editingId;
 
 	if (inlineState.editingId === todo.id) {
 		const input = document.createElement('input');
@@ -376,9 +386,16 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 			}
 		});
 		input.addEventListener('blur', () => {
-			if (input.value.trim().length === 0) {
+			const trimmed = input.value.trim();
+			if (trimmed.length === 0) {
 				exitInlineEdit(scope);
+				return;
 			}
+			if (trimmed === todo.title) {
+				exitInlineEdit(scope);
+				return;
+			}
+			commitInlineEdit(scope, todo.id, trimmed);
 		});
 		row.appendChild(input);
 	} else {
@@ -395,7 +412,9 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	const toggleButton = document.createElement('button');
 	toggleButton.className = 'todo-action';
 	toggleButton.title = snapshot?.strings.completeLabel ?? 'Toggle complete';
-	toggleButton.textContent = todo.completed ? '↺' : '✓';
+	toggleButton.innerHTML = todo.completed
+		? '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14C11.3137 14 14 11.3137 14 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 8V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 8H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+		: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M5 8L7 10L11 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 	toggleButton.addEventListener('click', () => postMessage({
 		type: 'toggleComplete',
 		scope,
@@ -405,14 +424,14 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 
 	const editButton = document.createElement('button');
 	editButton.className = 'todo-action';
-	editButton.textContent = '✎';
+	editButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path transform="translate(0, 2)" d="M12.5 3.5L10 1L3 8V10.5H5.5L12.5 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 	editButton.title = 'Edit';
 	editButton.addEventListener('click', () => startInlineEdit(scope, todo.id));
 	actions.appendChild(editButton);
 
 	const removeButton = document.createElement('button');
 	removeButton.className = 'todo-action';
-	removeButton.textContent = '✕';
+	removeButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 	removeButton.title = snapshot?.strings.removeLabel ?? 'Remove';
 	removeButton.addEventListener('click', () => postMessage({
 		type: 'removeTodo',
@@ -487,9 +506,12 @@ function commitInlineEdit(scope: WebviewScope, todoId: string, value: string): v
 	persistInlineState();
 }
 
-function attachDragHandlers(list: HTMLElement, scope: WebviewScope): void {
+function attachDragHandlers(list: HTMLElement, scope: WebviewScope, inlineState: InlineState): void {
 	let draggedId: string | undefined;
 	list.addEventListener('dragstart', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		const item = (event.target as HTMLElement | null)?.closest<HTMLElement>('.todo-item');
 		if (!item || !item.dataset.todoId) {
 			return;
@@ -498,6 +520,9 @@ function attachDragHandlers(list: HTMLElement, scope: WebviewScope): void {
 		event.dataTransfer?.setData('text/plain', draggedId);
 	});
 	list.addEventListener('dragover', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		if (!draggedId) {
 			return;
 		}
@@ -509,10 +534,16 @@ function attachDragHandlers(list: HTMLElement, scope: WebviewScope): void {
 		target.classList.add('drag-over');
 	});
 	list.addEventListener('dragleave', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('.todo-item');
 		target?.classList.remove('drag-over');
 	});
 	list.addEventListener('drop', (event) => {
+		if (inlineState.editingId) {
+			return;
+		}
 		event.preventDefault();
 		const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('.todo-item');
 		if (!target || !target.dataset.todoId || !draggedId || target.dataset.todoId === draggedId) {
