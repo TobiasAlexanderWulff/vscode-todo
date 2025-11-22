@@ -30,12 +30,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 				() => broadcastWebviewState(handlerContext.webviewHost, handlerContext.repository)
 			),
 		sendCue: (scope, todoId, durationMs) => {
-			webviewHost.postMessage(scopeToProviderMode(scope), {
-				type: 'autoDeleteCue',
-				scope: scopeTargetToWebviewScope(scope),
-				todoId,
-				durationMs,
-			});
+			const webviewScope = scopeTargetToWebviewScope(scope);
+			if (webviewScope) {
+				webviewHost.postMessage(scopeToProviderMode(scope), {
+					type: 'autoDeleteCue',
+					scope: webviewScope,
+					todoId,
+					durationMs,
+				});
+			}
 		},
 	});
 	const handlerContext: HandlerContext = { repository, webviewHost, autoDelete };

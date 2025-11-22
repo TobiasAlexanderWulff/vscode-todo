@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 
 import { HandlerContext } from '../types/handlerContext';
 import { addTodo, editTodo } from '../adapters/commandRouter';
+import { TodoWebviewHost } from '../todoWebviewHost';
 import { TodoRepository } from '../todoRepository';
 import { AutoDeleteCoordinator } from '../services/autoDeleteService';
 import { ScopeTarget } from '../types/scope';
@@ -64,10 +65,10 @@ suite('Command handlers', () => {
 
 	function toHandlerContext(
 		repository: TodoRepository,
-		webviewHost: FakeWebviewHost,
+		webviewHost: Pick<TodoWebviewHost, 'postMessage' | 'broadcast'>,
 		autoDelete: AutoDeleteCoordinator<HandlerContext>
 	): HandlerContext {
-		return { repository, webviewHost: webviewHost as any, autoDelete };
+		return { repository, webviewHost: webviewHost as TodoWebviewHost, autoDelete };
 	}
 
 	async function removeTodoWithoutUndo(
@@ -130,7 +131,7 @@ suite('Command handlers', () => {
 			showQuickPickStub;
 
 		await addTodo(toHandlerContext(repository, host, autoDelete), () =>
-			host.broadcast({ type: 'stateUpdate' })
+			host.broadcast({ type: 'stateUpdate', payload: null })
 		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
@@ -172,7 +173,7 @@ suite('Command handlers', () => {
 		showQuickPickStub;
 
 		await addTodo(toHandlerContext(repository, host, autoDelete), () =>
-			host.broadcast({ type: 'stateUpdate' })
+			host.broadcast({ type: 'stateUpdate', payload: null })
 		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
@@ -210,7 +211,7 @@ suite('Command handlers', () => {
 			showQuickPickStub;
 
 		await editTodo(toHandlerContext(repository, host, autoDelete), () =>
-			host.broadcast({ type: 'stateUpdate' })
+			host.broadcast({ type: 'stateUpdate', payload: null })
 		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
@@ -259,7 +260,7 @@ suite('Command handlers', () => {
 		showQuickPickStub;
 
 	await editTodo(toHandlerContext(repository, host, autoDelete), () =>
-		host.broadcast({ type: 'stateUpdate' })
+		host.broadcast({ type: 'stateUpdate', payload: null })
 	);
 
 	assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);

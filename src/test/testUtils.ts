@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 
 import * as config from '../adapters/config';
+import { TodoWebviewHost } from '../todoWebviewHost';
+import { OutboundMessage } from '../types/webviewMessages';
 
 /** Minimal in-memory stand-in for VS Code's Memento used by the repository during tests. */
 export class InMemoryMemento implements vscode.Memento {
@@ -61,15 +63,21 @@ export function stubReadConfig(next: config.TodoConfig): () => void {
 	};
 }
 
-export class FakeWebviewHost {
-	readonly postMessages: Array<{ mode: string; message: unknown }> = [];
-	readonly broadcastMessages: unknown[] = [];
+export class FakeWebviewHost implements Pick<TodoWebviewHost, 'postMessage' | 'broadcast'> {
+	readonly postMessages: Array<{ mode: string; message: OutboundMessage }> = [];
+	readonly broadcastMessages: OutboundMessage[] = [];
 
-	postMessage(mode: string, message: unknown): void {
+	// In tests, we don't need to simulate receiving messages, so we can stub this.
+	// The full implementation uses an EventEmitter.
+	// get onDidReceiveMessage(): vscode.Event<WebviewMessageEvent> {
+	// 	return new vscode.EventEmitter<WebviewMessageEvent>().event;
+	// }
+
+	postMessage(mode: string, message: OutboundMessage): void {
 		this.postMessages.push({ mode, message });
 	}
 
-	broadcast(message: unknown): void {
+	broadcast(message: OutboundMessage): void {
 		this.broadcastMessages.push(message);
 	}
 }

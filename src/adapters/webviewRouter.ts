@@ -2,7 +2,7 @@ import { HandlerContext } from '../types/handlerContext';
 import { ScopeTarget } from '../types/scope';
 import { TodoRepository } from '../todoRepository';
 import { TodoWebviewHost, ProviderMode } from '../todoWebviewHost';
-import { normalizePositions, reorderTodosByOrder } from '../domain/todo';
+import { reorderTodosByOrder } from '../domain/todo';
 import {
 	clearScope as clearScopeService,
 	removeTodoWithUndo as removeTodoWithUndoService,
@@ -215,21 +215,9 @@ function scopeFromWebviewScope(scope: WebviewScope): ScopeTarget | undefined {
 }
 
 function readTodos(repository: TodoRepository, scope: ScopeTarget): Todo[] {
-	if (scope.scope === 'global') {
-		return repository.getGlobalTodos();
-	}
-	return repository.getWorkspaceTodos(scope.workspaceFolder);
+	return repository.readTodos(scope);
 }
 
-async function persistTodos(
-	repository: TodoRepository,
-	scope: ScopeTarget,
-	todos: Todo[]
-): Promise<void> {
-	const normalized = normalizePositions(todos);
-	if (scope.scope === 'global') {
-		await repository.saveGlobalTodos(normalized);
-	} else {
-		await repository.saveWorkspaceTodos(scope.workspaceFolder, normalized);
-	}
+async function persistTodos(repository: TodoRepository, scope: ScopeTarget, todos: Todo[]): Promise<void> {
+	await repository.persistTodos(scope, todos);
 }

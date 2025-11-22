@@ -11,6 +11,10 @@ import {
 import { Todo } from '../types';
 import { TodoWebviewHost } from '../todoWebviewHost';
 import { readConfig } from './config';
+import {
+	scopeTargetToWebviewScope,
+	scopeToProviderMode,
+} from './scopeMapping';
 
 interface CommandDependencies {
 	context: vscode.ExtensionContext;
@@ -235,7 +239,7 @@ function dispatchInlineCreate(host: TodoWebviewHost, scope: ScopeTarget): void {
 }
 
 function dispatchInlineEdit(host: TodoWebviewHost, target: TodoTarget): void {
-	const scope = todoTargetToWebviewScope(target);
+	const scope = scopeTargetToWebviewScope(target);
 	if (!scope) {
 		return;
 	}
@@ -244,18 +248,4 @@ function dispatchInlineEdit(host: TodoWebviewHost, target: TodoTarget): void {
 		scope,
 		todoId: target.todoId,
 	});
-}
-
-function todoTargetToWebviewScope(target: TodoTarget) {
-	if (target.scope === 'global') {
-		return { scope: 'global' as const };
-	}
-	if (!target.workspaceFolder) {
-		return undefined;
-	}
-	return { scope: 'workspace' as const, workspaceFolder: target.workspaceFolder };
-}
-
-function scopeToProviderMode(scope: ScopeTarget): 'global' | 'projects' {
-	return scope.scope === 'global' ? 'global' : 'projects';
 }

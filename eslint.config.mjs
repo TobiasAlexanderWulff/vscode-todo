@@ -5,9 +5,16 @@ import importPlugin from 'eslint-plugin-import';
 
 export default [
 	{
-		files: ['**/*.ts'],
+		// Ignore config files from architectural linting
+		files: ['*.mjs', '*.js'],
+		rules: {
+			'boundaries/no-unknown-files': 'off',
+			'import/no-default-export': 'off',
+		},
 	},
 	{
+		// Main source file configuration
+		files: ['src/**/*.ts'],
 		plugins: {
 			'@typescript-eslint': typescriptEslint,
 			boundaries,
@@ -60,7 +67,7 @@ export default [
 			'prefer-const': 'warn',
 			'@typescript-eslint/no-unused-vars': [
 				'warn',
-				{ argsIgnorePattern: '^_' },
+				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
 			],
 
 			'boundaries/element-types': [
