@@ -28,6 +28,7 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 - Provide screenshots or animations for the TreeView when features stabilize.
 - Keep `.vscode/` and `.vscodeignore` aligned with the development workflow (launch configs, tasks, packaging ignore rules).
 - Prepare marketplace releases by running `npm run package` and documenting notable changes in the changelog.
+- Maintain a local `AGENTS.md` in each important directory (e.g., `src/`, `src/adapters/`, `src/services/`, `src/test/`, `docs/`) that captures directory-specific guardrails for contributors.
 
 ## Shared Workflows
 - Install dependencies: `npm install`.
