@@ -147,20 +147,6 @@ suite('Command handlers', () => {
 		return scope.scope === 'global' ? 'global' : 'projects';
 	}
 
-	/** Captures messages sent from command handlers without invoking real VS Code webviews. */
-	class FakeWebviewHost {
-		readonly postMessages: Array<{ mode: string; message: unknown }> = [];
-		readonly broadcastMessages: unknown[] = [];
-
-		postMessage(mode: string, message: unknown): void {
-			this.postMessages.push({ mode, message });
-		}
-
-		broadcast(message: unknown): void {
-			this.broadcastMessages.push(message);
-		}
-	}
-
 	afterEach(() => {
 		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
 			originalShowQuickPick;
