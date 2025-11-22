@@ -156,20 +156,20 @@ suite('Command handlers', () => {
 		const host = new FakeWebviewHost();
 		const autoDelete = createAutoDelete(host);
 		const executedCommands: string[] = [];
-		const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
-			executedCommands.push(command);
-			return undefined as unknown as never;
-		};
-		(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
-			executeCommandStub;
-		const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) => {
-			const pick = (items as readonly vscode.QuickPickItem[]).find(
-				(item) => item.label === 'Workspace B'
-			);
-			return pick as any;
-		};
-		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
-			showQuickPickStub;
+	const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
+		executedCommands.push(command);
+		return undefined as unknown as never;
+	};
+	(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
+		executeCommandStub;
+	const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) => {
+		const pick = (items as readonly vscode.QuickPickItem[]).find(
+			(item) => item.label === 'Workspace B'
+		);
+		return pick as any;
+	};
+	(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
+		showQuickPickStub;
 
 		await addTodo(toHandlerContext(repository, host, autoDelete), () =>
 			host.broadcast({ type: 'stateUpdate' })
@@ -232,51 +232,51 @@ suite('Command handlers', () => {
 			{ uri: folderA, name: 'Workspace A', index: 0 },
 			{ uri: folderB, name: 'Workspace B', index: 1 },
 		]);
-		const { repository } = createRepositoryHarness();
-		const workspaceTodo = repository.createTodo({
-			title: 'Workspace edit',
-			scope: 'workspace',
-			workspaceFolder: folderB.toString(),
-		});
-		await repository.saveWorkspaceTodos(folderB.toString(), [workspaceTodo]);
-
-		const host = new FakeWebviewHost();
-		const autoDelete = createAutoDelete(host);
-		const executedCommands: string[] = [];
-		const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
-			executedCommands.push(command);
-			return undefined as unknown as never;
-		};
-		(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
-			executeCommandStub;
-		const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) => {
-			const pick = (items as readonly vscode.QuickPickItem[]).find(
-				(item) => item.label === 'Workspace B'
-			);
-			return pick as any;
-		};
-		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
-			showQuickPickStub;
-
-		await editTodo(toHandlerContext(repository, host, autoDelete), () =>
-			host.broadcast({ type: 'stateUpdate' })
-		);
-
-		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
-		assert.ok(
-			host.broadcastMessages.some(
-				(message) => (message as { type: string }).type === 'stateUpdate'
-			)
-		);
-		assert.deepStrictEqual(host.postMessages[0], {
-			mode: 'projects',
-			message: {
-				type: 'startInlineEdit',
-				scope: { scope: 'workspace', workspaceFolder: folderB.toString() },
-				todoId: workspaceTodo.id,
-			},
-		});
+	const { repository } = createRepositoryHarness();
+	const workspaceTodo = repository.createTodo({
+		title: 'Workspace edit',
+		scope: 'workspace',
+		workspaceFolder: folderB.toString(),
 	});
+	await repository.saveWorkspaceTodos(folderB.toString(), [workspaceTodo]);
+
+	const host = new FakeWebviewHost();
+	const autoDelete = createAutoDelete(host);
+	const executedCommands: string[] = [];
+	const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
+		executedCommands.push(command);
+		return undefined as unknown as never;
+	};
+	(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
+		executeCommandStub;
+	const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) => {
+		const pick = (items as readonly vscode.QuickPickItem[]).find(
+			(item) => item.label === workspaceTodo.title
+		);
+		return pick as any;
+	};
+	(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
+		showQuickPickStub;
+
+	await editTodo(toHandlerContext(repository, host, autoDelete), () =>
+		host.broadcast({ type: 'stateUpdate' })
+	);
+
+	assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
+	assert.ok(
+		host.broadcastMessages.some(
+			(message) => (message as { type: string }).type === 'stateUpdate'
+		)
+	);
+	assert.deepStrictEqual(host.postMessages[0], {
+		mode: 'projects',
+		message: {
+			type: 'startInlineEdit',
+			scope: { scope: 'workspace', workspaceFolder: folderB.toString() },
+			todoId: workspaceTodo.id,
+		},
+	});
+});
 
 	test('reorders workspace todos via webview message', async () => {
 		const folder = vscode.Uri.parse('file:///project');
