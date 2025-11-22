@@ -60,3 +60,21 @@ export function stubReadConfig(next: config.TodoConfig): () => void {
 		(config as unknown as { readConfig: typeof config.readConfig }).readConfig = original;
 	};
 }
+
+export class FakeWebviewHost {
+	readonly postMessages: Array<{ mode: string; message: unknown }> = [];
+	readonly broadcastMessages: unknown[] = [];
+
+	postMessage(mode: string, message: unknown): void {
+		this.postMessages.push({ mode, message });
+	}
+
+	broadcast(message: unknown): void {
+		this.broadcastMessages.push(message);
+	}
+}
+
+/** No-op broadcaster to pass into command/router helpers in tests. */
+export function noopBroadcast(): void {
+	// intentional no-op
+}

@@ -10,7 +10,9 @@ import { AutoDeleteCoordinator } from '../services/autoDeleteService';
 import { ScopeTarget } from '../types/scope';
 import { handleWebviewMessage } from '../adapters/webviewRouter';
 import {
+	FakeWebviewHost,
 	InMemoryMemento,
+	noopBroadcast,
 	overrideWorkspaceFolders,
 	restoreWorkspaceFoldersDescriptor,
 	stubReadConfig,
