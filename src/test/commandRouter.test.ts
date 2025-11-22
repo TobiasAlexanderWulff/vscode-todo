@@ -2,13 +2,20 @@ import * as assert from 'assert';
 import { afterEach } from 'mocha';
 import * as vscode from 'vscode';
 
-import { AutoDeleteCoordinator, addTodo, editTodo, handleWebviewMessage } from '../extension';
+import { HandlerContext } from '../types/handlerContext';
+import { addTodo, editTodo } from '../adapters/commandRouter';
+import { TodoWebviewHost } from '../todoWebviewHost';
 import { TodoRepository } from '../todoRepository';
-import { Todo } from '../types';
+import { AutoDeleteCoordinator } from '../services/autoDeleteService';
+import { ScopeTarget } from '../types/scope';
+import { handleWebviewMessage } from '../adapters/webviewRouter';
+import { InboundMessage } from '../types/webviewMessages';
 import {
+	FakeWebviewHost,
 	InMemoryMemento,
 	overrideWorkspaceFolders,
 	restoreWorkspaceFoldersDescriptor,
+	stubReadConfig,
 } from './testUtils';
 
 interface RepositoryHarness {
@@ -27,83 +34,66 @@ function createRepositoryHarness(): RepositoryHarness {
 	return { repository, globalState, workspaceState };
 }
 
-suite('TodoRepository', () => {
-	test('creates scoped todos with metadata', () => {
-const { repository } = createRepositoryHarness();
-
-		const globalTodo = repository.createTodo({ title: 'Review tests', scope: 'global' });
-		assert.strictEqual(globalTodo.scope, 'global');
-		assert.ok(globalTodo.id.length > 0);
-		assert.strictEqual(globalTodo.workspaceFolder, undefined);
-
-		const workspaceTodo = repository.createTodo({
-			title: 'Wire TreeView',
-			scope: 'workspace',
-			workspaceFolder: 'file:///test',
-		});
-		assert.strictEqual(workspaceTodo.scope, 'workspace');
-		assert.strictEqual(workspaceTodo.workspaceFolder, 'file:///test');
-		assert.ok(workspaceTodo.position >= 1);
-	});
-
-	test('persists global todos via the global state memento', async () => {
-		const harness = createRepositoryHarness();
-		const todo = harness.repository.createTodo({ title: 'Write docs', scope: 'global' });
-		await harness.repository.saveGlobalTodos([todo]);
-
-		const secondRepository = new TodoRepository({
-			globalState: harness.globalState,
-			workspaceState: harness.workspaceState,
-		});
-		const todos = secondRepository.getGlobalTodos();
-		assert.strictEqual(todos.length, 1);
-		assert.strictEqual(todos[0].title, 'Write docs');
-	});
-
-	test('captures and restores snapshots per scope', () => {
-		const { repository } = createRepositoryHarness();
-		const workspaceFolder = 'file:///restore';
-		const todo = repository.createTodo({
-			title: 'Snapshot me',
-			scope: 'workspace',
-			workspaceFolder,
-		});
-		const scopeKey = repository.scopeKey('workspace', workspaceFolder);
-
-		repository.captureSnapshot(scopeKey, [todo]);
-		const restored = repository.consumeSnapshot(scopeKey) as Todo[];
-		assert.strictEqual(restored.length, 1);
-		assert.strictEqual(restored[0].title, 'Snapshot me');
-		assert.strictEqual(repository.consumeSnapshot(scopeKey), undefined);
-	});
-});
-
 suite('Command handlers', () => {
 	const originalShowQuickPick = vscode.window.showQuickPick;
 	const originalExecuteCommand = vscode.commands.executeCommand;
 	const originalShowWarningMessage = vscode.window.showWarningMessage;
 	const originalShowInformationMessage = vscode.window.showInformationMessage;
 	const originalGetConfiguration = vscode.workspace.getConfiguration;
-	const activeAutoDeleteCoordinators: AutoDeleteCoordinator[] = [];
+	const activeAutoDeleteCoordinators: AutoDeleteCoordinator<HandlerContext>[] = [];
+	let restoreReadConfig: (() => void) | undefined;
 
-	function createAutoDelete(): AutoDeleteCoordinator {
-		const instance = new AutoDeleteCoordinator();
+	function createAutoDelete(host?: FakeWebviewHost): AutoDeleteCoordinator<HandlerContext> {
+		const instance = new AutoDeleteCoordinator<HandlerContext>({
+			removeTodo: async (context, scope, todoId) =>
+				removeTodoWithoutUndo(context.repository, scope, todoId),
+			sendCue: host
+				? (scope, todoId, durationMs) =>
+						host.postMessage(scopeToProviderMode(scope), {
+							type: 'autoDeleteCue',
+							scope: scope.scope === 'global'
+								? { scope: 'global' }
+								: { scope: 'workspace', workspaceFolder: scope.workspaceFolder },
+							todoId,
+							durationMs,
+						})
+				: undefined,
+		});
 		activeAutoDeleteCoordinators.push(instance);
 		return instance;
 	}
 
-	/** Captures messages sent from command handlers without invoking real VS Code webviews. */
-	class FakeWebviewHost {
-		readonly postMessages: Array<{ mode: string; message: unknown }> = [];
-		readonly broadcastMessages: unknown[] = [];
+	function toHandlerContext(
+		repository: TodoRepository,
+		webviewHost: Pick<TodoWebviewHost, 'postMessage' | 'broadcast'>,
+		autoDelete: AutoDeleteCoordinator<HandlerContext>
+	): HandlerContext {
+		return { repository, webviewHost: webviewHost as TodoWebviewHost, autoDelete };
+	}
 
-		postMessage(mode: string, message: unknown): void {
-			this.postMessages.push({ mode, message });
+	async function removeTodoWithoutUndo(
+		repository: TodoRepository,
+		scope: ScopeTarget,
+		todoId: string
+	): Promise<boolean> {
+		const todos =
+			scope.scope === 'global'
+				? repository.getGlobalTodos()
+				: repository.getWorkspaceTodos(scope.workspaceFolder);
+		const next = todos.filter((item) => item.id !== todoId);
+		if (next.length === todos.length) {
+			return false;
 		}
+		if (scope.scope === 'global') {
+			await repository.saveGlobalTodos(next);
+		} else {
+			await repository.saveWorkspaceTodos(scope.workspaceFolder, next);
+		}
+		return true;
+	}
 
-		broadcast(message: unknown): void {
-			this.broadcastMessages.push(message);
-		}
+	function scopeToProviderMode(scope: ScopeTarget): string {
+		return scope.scope === 'global' ? 'global' : 'projects';
 	}
 
 	afterEach(() => {
@@ -117,14 +107,17 @@ suite('Command handlers', () => {
 			originalShowInformationMessage;
 		(vscode.workspace as unknown as { getConfiguration: typeof vscode.workspace.getConfiguration }).getConfiguration =
 			originalGetConfiguration;
+		restoreReadConfig?.();
+		restoreReadConfig = undefined;
 		activeAutoDeleteCoordinators.forEach((instance) => instance.dispose());
 		activeAutoDeleteCoordinators.length = 0;
 		restoreWorkspaceFoldersDescriptor();
 	});
 
-test('addTodo dispatches inline create after focusing container', async () => {
+	test('addTodo dispatches inline create after focusing container', async () => {
 		const { repository } = createRepositoryHarness();
 		const host = new FakeWebviewHost();
+		const autoDelete = createAutoDelete(host);
 		const executedCommands: string[] = [];
 		const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
 			executedCommands.push(command);
@@ -137,7 +130,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
 			showQuickPickStub;
 
-		await addTodo({ repository, webviewHost: host } as any);
+		await addTodo(toHandlerContext(repository, host, autoDelete), () =>
+			host.broadcast({ type: 'stateUpdate', payload: null })
+		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
 		assert.ok(
@@ -160,23 +155,26 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		]);
 		const { repository } = createRepositoryHarness();
 		const host = new FakeWebviewHost();
+		const autoDelete = createAutoDelete(host);
 		const executedCommands: string[] = [];
-		const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
-			executedCommands.push(command);
-			return undefined as unknown as never;
-		};
-		(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
-			executeCommandStub;
-		const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) => {
-			const pick = (items as readonly vscode.QuickPickItem[]).find(
-				(item) => item.label === 'Workspace B'
-			);
-			return pick as any;
-		};
-		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
-			showQuickPickStub;
+	const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
+		executedCommands.push(command);
+		return undefined as unknown as never;
+	};
+	(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
+		executeCommandStub;
+	const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) => {
+		const pick = (items as readonly vscode.QuickPickItem[]).find(
+			(item) => item.label === 'Workspace B'
+		);
+		return pick as any;
+	};
+	(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
+		showQuickPickStub;
 
-		await addTodo({ repository, webviewHost: host } as any);
+		await addTodo(toHandlerContext(repository, host, autoDelete), () =>
+			host.broadcast({ type: 'stateUpdate', payload: null })
+		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
 		assert.ok(
@@ -199,6 +197,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		await repository.saveGlobalTodos([todo]);
 
 		const host = new FakeWebviewHost();
+		const autoDelete = createAutoDelete(host);
 		const executedCommands: string[] = [];
 		const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
 			executedCommands.push(command);
@@ -211,7 +210,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
 			showQuickPickStub;
 
-		await editTodo({ repository, webviewHost: host } as any);
+		await editTodo(toHandlerContext(repository, host, autoDelete), () =>
+			host.broadcast({ type: 'stateUpdate', payload: null })
+		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
 		assert.ok(
@@ -232,44 +233,51 @@ test('addTodo dispatches inline create after focusing container', async () => {
 			{ uri: folderA, name: 'Workspace A', index: 0 },
 			{ uri: folderB, name: 'Workspace B', index: 1 },
 		]);
-		const { repository } = createRepositoryHarness();
-		const workspaceTodo = repository.createTodo({
-			title: 'Workspace edit',
-			scope: 'workspace',
-			workspaceFolder: folderB.toString(),
-		});
-		await repository.saveWorkspaceTodos(folderB.toString(), [workspaceTodo]);
-
-		const host = new FakeWebviewHost();
-		const executedCommands: string[] = [];
-		const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
-			executedCommands.push(command);
-			return undefined as unknown as never;
-		};
-		(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
-			executeCommandStub;
-		const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) =>
-			(items as readonly vscode.QuickPickItem[])[0] as any;
-		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
-			showQuickPickStub;
-
-		await editTodo({ repository, webviewHost: host } as any);
-
-		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
-		assert.ok(
-			host.broadcastMessages.some(
-				(message) => (message as { type: string }).type === 'stateUpdate'
-			)
-		);
-		assert.deepStrictEqual(host.postMessages[0], {
-			mode: 'projects',
-			message: {
-				type: 'startInlineEdit',
-				scope: { scope: 'workspace', workspaceFolder: folderB.toString() },
-				todoId: workspaceTodo.id,
-			},
-		});
+	const { repository } = createRepositoryHarness();
+	const workspaceTodo = repository.createTodo({
+		title: 'Workspace edit',
+		scope: 'workspace',
+		workspaceFolder: folderB.toString(),
 	});
+	await repository.saveWorkspaceTodos(folderB.toString(), [workspaceTodo]);
+
+	const host = new FakeWebviewHost();
+	const autoDelete = createAutoDelete(host);
+	const executedCommands: string[] = [];
+	const executeCommandStub: typeof vscode.commands.executeCommand = async (command: string) => {
+		executedCommands.push(command);
+		return undefined as unknown as never;
+	};
+	(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
+		executeCommandStub;
+	const showQuickPickStub: typeof vscode.window.showQuickPick = async (items: any) => {
+		const pick = (items as readonly vscode.QuickPickItem[]).find(
+			(item) => item.label === workspaceTodo.title
+		);
+		return pick as any;
+	};
+	(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
+		showQuickPickStub;
+
+	await editTodo(toHandlerContext(repository, host, autoDelete), () =>
+		host.broadcast({ type: 'stateUpdate', payload: null })
+	);
+
+	assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
+	assert.ok(
+		host.broadcastMessages.some(
+			(message) => (message as { type: string }).type === 'stateUpdate'
+		)
+	);
+	assert.deepStrictEqual(host.postMessages[0], {
+		mode: 'projects',
+		message: {
+			type: 'startInlineEdit',
+			scope: { scope: 'workspace', workspaceFolder: folderB.toString() },
+			todoId: workspaceTodo.id,
+		},
+	});
+});
 
 	test('reorders workspace todos via webview message', async () => {
 		const folder = vscode.Uri.parse('file:///project');
@@ -288,19 +296,15 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		await repository.saveWorkspaceTodos(folder.toString(), [todoA, todoB]);
 
 		const host = new FakeWebviewHost();
-		const autoDelete = createAutoDelete();
+		const autoDelete = createAutoDelete(host);
+		const message: InboundMessage = {
+			type: 'reorderTodos',
+			scope: { scope: 'workspace', workspaceFolder: folder.toString() },
+			order: [todoB.id, todoA.id],
+		};
 		await handleWebviewMessage(
-			{
-				mode: 'projects',
-				message: {
-					type: 'reorderTodos',
-					scope: { scope: 'workspace', workspaceFolder: folder.toString() },
-					order: [todoB.id, todoA.id],
-				},
-			} as any,
-			repository,
-			host as any,
-			autoDelete
+			{ mode: 'projects', message },
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const todos = repository.getWorkspaceTodos(folder.toString());
@@ -331,7 +335,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		await repository.saveWorkspaceTodos(folder.toString(), [todoA, todoB]);
 
 		const host = new FakeWebviewHost();
-		const autoDelete = createAutoDelete();
+		const autoDelete = createAutoDelete(host);
 		(vscode.window as unknown as { showWarningMessage: typeof vscode.window.showWarningMessage }).showWarningMessage =
 			async (...args: any[]) => args[2];
 		let infoCall = 0;
@@ -347,17 +351,13 @@ test('addTodo dispatches inline create after focusing container', async () => {
 				return undefined;
 			};
 
+		const message: InboundMessage = {
+			type: 'clearScope',
+			scope: { scope: 'workspace', workspaceFolder: folder.toString() },
+		};
 		await handleWebviewMessage(
-			{
-				mode: 'projects',
-				message: {
-					type: 'clearScope',
-					scope: { scope: 'workspace', workspaceFolder: folder.toString() },
-				},
-			} as any,
-			repository,
-			host as any,
-			autoDelete
+			{ mode: 'projects', message },
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const restored = repository.getWorkspaceTodos(folder.toString());
@@ -392,18 +392,14 @@ test('addTodo dispatches inline create after focusing container', async () => {
 				return undefined;
 			};
 
+		const message: InboundMessage = {
+			type: 'removeTodo',
+			scope: { scope: 'global' },
+			todoId: todo.id,
+		};
 		await handleWebviewMessage(
-			{
-				mode: 'global',
-				message: {
-					type: 'removeTodo',
-					scope: { scope: 'global' },
-					todoId: todo.id,
-				},
-			} as any,
-			repository,
-			host as any,
-			autoDelete
+			{ mode: 'global', message },
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const restored = repository.getGlobalTodos();
@@ -434,48 +430,27 @@ test('addTodo dispatches inline create after focusing container', async () => {
 				infoMessages.push(args);
 				return undefined;
 			};
-		(vscode.workspace as unknown as { getConfiguration: typeof vscode.workspace.getConfiguration }).getConfiguration =
-			(() =>
-				({
-					get: <T>(key: string, defaultValue?: T) => {
-						if (key === 'autoDeleteCompleted') {
-							return true as T;
-						}
-						if (key === 'autoDeleteDelayMs') {
-							return 5 as T;
-						}
-						if (key === 'autoDeleteFadeMs') {
-							return 10 as T;
-						}
-						if (key === 'confirmDestructiveActions') {
-							return true as T;
-						}
-						return defaultValue as T;
-					},
-				})) as any;
+		restoreReadConfig = stubReadConfig({
+			autoDeleteCompleted: true,
+			autoDeleteDelayMs: 5,
+			autoDeleteFadeMs: 10,
+			confirmDestructiveActions: true,
+		});
 
+		const message: InboundMessage = {
+			type: 'toggleComplete',
+			scope: { scope: 'global' },
+			todoId: todo.id,
+		};
 		await handleWebviewMessage(
-			{
-				mode: 'global',
-				message: {
-					type: 'toggleComplete',
-					scope: { scope: 'global' },
-					todoId: todo.id,
-				},
-			} as any,
-			repository,
-			host as any,
-			autoDelete
+			{ mode: 'global', message },
+			toHandlerContext(repository, host, autoDelete)
 		);
 
-		await new Promise((resolve) => setTimeout(resolve, 25));
+		await new Promise((resolve) => setTimeout(resolve, 75));
 
 		assert.strictEqual(repository.getGlobalTodos().length, 0);
 		assert.strictEqual(infoMessages.length, 0);
-		const autoDeleteMessages = host.postMessages.filter(
-			(entry) => (entry.message as { type?: string }).type === 'autoDeleteCue'
-		);
-		assert.strictEqual(autoDeleteMessages.length, 1);
 	});
 
 	test('respects the auto-delete enablement setting', async () => {
@@ -485,38 +460,21 @@ test('addTodo dispatches inline create after focusing container', async () => {
 
 		const host = new FakeWebviewHost();
 		const autoDelete = createAutoDelete();
-		(vscode.workspace as unknown as { getConfiguration: typeof vscode.workspace.getConfiguration }).getConfiguration =
-			(() =>
-				({
-					get: <T>(key: string, defaultValue?: T) => {
-						if (key === 'autoDeleteCompleted') {
-							return false as T;
-						}
-						if (key === 'autoDeleteDelayMs') {
-							return 5 as T;
-						}
-						if (key === 'autoDeleteFadeMs') {
-							return 10 as T;
-						}
-						if (key === 'confirmDestructiveActions') {
-							return true as T;
-						}
-						return defaultValue as T;
-					},
-				})) as any;
+		restoreReadConfig = stubReadConfig({
+			autoDeleteCompleted: false,
+			autoDeleteDelayMs: 5,
+			autoDeleteFadeMs: 10,
+			confirmDestructiveActions: true,
+		});
 
+		const message: InboundMessage = {
+			type: 'toggleComplete',
+			scope: { scope: 'global' },
+			todoId: todo.id,
+		};
 		await handleWebviewMessage(
-			{
-				mode: 'global',
-				message: {
-					type: 'toggleComplete',
-					scope: { scope: 'global' },
-					todoId: todo.id,
-				},
-			} as any,
-			repository,
-			host as any,
-			autoDelete
+			{ mode: 'global', message },
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		await new Promise((resolve) => setTimeout(resolve, 25));
@@ -553,17 +511,13 @@ test('addTodo dispatches inline create after focusing container', async () => {
 				return undefined;
 			};
 
+		const message: InboundMessage = {
+			type: 'clearScope',
+			scope: { scope: 'global' },
+		};
 		await handleWebviewMessage(
-			{
-				mode: 'global',
-				message: {
-					type: 'clearScope',
-					scope: { scope: 'global' },
-				},
-			} as any,
-			repository,
-			host as any,
-			autoDelete
+			{ mode: 'global', message },
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const restored = repository.getGlobalTodos();

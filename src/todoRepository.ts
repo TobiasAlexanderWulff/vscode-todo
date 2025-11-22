@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 
+import { normalizePositions } from './domain/todo';
 import { ScopeKey, Todo, TodoScope } from './types';
 
 const GLOBAL_STATE_KEY = 'todo.globalState';
@@ -118,6 +119,27 @@ export class TodoRepository {
 		return snapshot?.map((todo) => ({ ...todo }));
 	}
 
+	/** Reads todos based on a scope target, abstracting away the getGlobal/getWorkspace call. */
+	readTodos(scope: { scope: 'global' } | { scope: 'workspace'; workspaceFolder: string }): Todo[] {
+		if (scope.scope === 'global') {
+			return this.getGlobalTodos();
+		}
+		return this.getWorkspaceTodos(scope.workspaceFolder);
+	}
+
+	/** Persists todos based on a scope target, abstracting away the saveGlobal/saveWorkspace call. */
+	async persistTodos(
+		scope: { scope: 'global' } | { scope: 'workspace'; workspaceFolder: string },
+		todos: Todo[]
+	): Promise<void> {
+		const normalized = normalizePositions(todos);
+		if (scope.scope === 'global') {
+			await this.saveGlobalTodos(normalized);
+		} else {
+			await this.saveWorkspaceTodos(scope.workspaceFolder, normalized);
+		}
+	}
+
 	/** Calculates the next position within a scope to keep manual ordering stable. */
 	private nextPosition(input: CreateTodoInput): number {
 		const siblings =
@@ -154,7 +176,7 @@ export class TodoRepository {
 	}
 
 	private toEntity(todo: Todo): PersistedTodo {
-		const { scope, workspaceFolder, ...rest } = todo;
+		const { scope: _scope, workspaceFolder: _workspaceFolder, ...rest } = todo;
 		return { ...rest };
 	}
 
