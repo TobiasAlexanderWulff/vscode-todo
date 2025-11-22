@@ -9,6 +9,7 @@ import { Todo } from '../types';
 import { AutoDeleteCoordinator } from '../services/autoDeleteService';
 import { ScopeTarget } from '../types/scope';
 import { handleWebviewMessage } from '../adapters/webviewRouter';
+import * as config from '../adapters/config';
 import {
 	InMemoryMemento,
 	overrideWorkspaceFolders,
@@ -88,6 +89,7 @@ suite('Command handlers', () => {
 	const originalShowWarningMessage = vscode.window.showWarningMessage;
 	const originalShowInformationMessage = vscode.window.showInformationMessage;
 	const originalGetConfiguration = vscode.workspace.getConfiguration;
+	const originalReadConfig = config.readConfig;
 	const activeAutoDeleteCoordinators: AutoDeleteCoordinator<HandlerContext>[] = [];
 
 	function createAutoDelete(host?: FakeWebviewHost): AutoDeleteCoordinator<HandlerContext> {
@@ -168,6 +170,7 @@ suite('Command handlers', () => {
 			originalShowInformationMessage;
 		(vscode.workspace as unknown as { getConfiguration: typeof vscode.workspace.getConfiguration }).getConfiguration =
 			originalGetConfiguration;
+		(config as any).readConfig = originalReadConfig;
 		activeAutoDeleteCoordinators.forEach((instance) => instance.dispose());
 		activeAutoDeleteCoordinators.length = 0;
 		restoreWorkspaceFoldersDescriptor();

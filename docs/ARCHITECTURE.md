@@ -8,6 +8,7 @@ This extension is organized into layered modules to keep business rules reusable
 - **Adapters** (`src/adapters`): Boundaries to VS Code APIs — command handlers/router, webview host/router, configuration, and state broadcasting.
 - **Webview runtime** (`src/webview`): Client-side code running inside the webviews; communicates via typed messages shared with the extension host.
 - **Composition** (`src/extension.ts`): Activation entry that wires localization, services, adapters, and disposables.
+- **Config adapter** (`src/adapters/config.ts`): Single place to read `todo.*` settings; other modules receive config rather than reading VS Code directly.
 
 ## Dependency Rules
 - Domain → nothing.
