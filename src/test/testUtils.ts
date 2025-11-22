@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+import * as config from '../adapters/config';
+
 /** Minimal in-memory stand-in for VS Code's Memento used by the repository during tests. */
 export class InMemoryMemento implements vscode.Memento {
 	private readonly store = new Map<string, unknown>();
@@ -48,4 +50,13 @@ export function restoreWorkspaceFoldersDescriptor(): void {
 		return;
 	}
 	Object.defineProperty(vscode.workspace, 'workspaceFolders', { get: () => undefined });
+}
+
+/** Temporarily overrides readConfig during a test. Restored by calling the returned disposer. */
+export function stubReadConfig(next: config.TodoConfig): () => void {
+	const original = config.readConfig;
+	(config as unknown as { readConfig: typeof config.readConfig }).readConfig = () => next;
+	return () => {
+		(config as unknown as { readConfig: typeof config.readConfig }).readConfig = original;
+	};
 }

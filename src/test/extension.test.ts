@@ -9,11 +9,11 @@ import { Todo } from '../types';
 import { AutoDeleteCoordinator } from '../services/autoDeleteService';
 import { ScopeTarget } from '../types/scope';
 import { handleWebviewMessage } from '../adapters/webviewRouter';
-import * as config from '../adapters/config';
 import {
 	InMemoryMemento,
 	overrideWorkspaceFolders,
 	restoreWorkspaceFoldersDescriptor,
+	stubReadConfig,
 } from './testUtils';
 
 interface RepositoryHarness {
@@ -89,8 +89,8 @@ suite('Command handlers', () => {
 	const originalShowWarningMessage = vscode.window.showWarningMessage;
 	const originalShowInformationMessage = vscode.window.showInformationMessage;
 	const originalGetConfiguration = vscode.workspace.getConfiguration;
-	const originalReadConfig = config.readConfig;
 	const activeAutoDeleteCoordinators: AutoDeleteCoordinator<HandlerContext>[] = [];
+	let restoreReadConfig: (() => void) | undefined;
 
 	function createAutoDelete(host?: FakeWebviewHost): AutoDeleteCoordinator<HandlerContext> {
 		const instance = new AutoDeleteCoordinator<HandlerContext>({
@@ -170,7 +170,8 @@ suite('Command handlers', () => {
 			originalShowInformationMessage;
 		(vscode.workspace as unknown as { getConfiguration: typeof vscode.workspace.getConfiguration }).getConfiguration =
 			originalGetConfiguration;
-		(config as any).readConfig = originalReadConfig;
+		restoreReadConfig?.();
+		restoreReadConfig = undefined;
 		activeAutoDeleteCoordinators.forEach((instance) => instance.dispose());
 		activeAutoDeleteCoordinators.length = 0;
 		restoreWorkspaceFoldersDescriptor();
@@ -482,25 +483,12 @@ test('addTodo dispatches inline create after focusing container', async () => {
 				infoMessages.push(args);
 				return undefined;
 			};
-		(vscode.workspace as unknown as { getConfiguration: typeof vscode.workspace.getConfiguration }).getConfiguration =
-			(() =>
-				({
-					get: <T>(key: string, defaultValue?: T) => {
-						if (key === 'autoDeleteCompleted') {
-							return true as T;
-						}
-						if (key === 'autoDeleteDelayMs') {
-							return 5 as T;
-						}
-						if (key === 'autoDeleteFadeMs') {
-							return 10 as T;
-						}
-						if (key === 'confirmDestructiveActions') {
-							return true as T;
-						}
-						return defaultValue as T;
-					},
-				})) as any;
+		restoreReadConfig = stubReadConfig({
+			autoDeleteCompleted: true,
+			autoDeleteDelayMs: 5,
+			autoDeleteFadeMs: 10,
+			confirmDestructiveActions: true,
+		});
 
 		await handleWebviewMessage(
 			{
@@ -527,25 +515,12 @@ test('addTodo dispatches inline create after focusing container', async () => {
 
 		const host = new FakeWebviewHost();
 		const autoDelete = createAutoDelete();
-		(vscode.workspace as unknown as { getConfiguration: typeof vscode.workspace.getConfiguration }).getConfiguration =
-			(() =>
-				({
-					get: <T>(key: string, defaultValue?: T) => {
-						if (key === 'autoDeleteCompleted') {
-							return false as T;
-						}
-						if (key === 'autoDeleteDelayMs') {
-							return 5 as T;
-						}
-						if (key === 'autoDeleteFadeMs') {
-							return 10 as T;
-						}
-						if (key === 'confirmDestructiveActions') {
-							return true as T;
-						}
-						return defaultValue as T;
-					},
-				})) as any;
+		restoreReadConfig = stubReadConfig({
+			autoDeleteCompleted: false,
+			autoDeleteDelayMs: 5,
+			autoDeleteFadeMs: 10,
+			confirmDestructiveActions: true,
+		});
 
 		await handleWebviewMessage(
 			{
