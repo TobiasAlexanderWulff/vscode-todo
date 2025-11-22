@@ -11,6 +11,7 @@ import {
 	WebviewMessageEvent,
 } from './todoWebviewHost';
 import { buildWebviewStateSnapshot } from './webviewState';
+import { normalizePositions, reorderTodosByOrder } from './domain/todo';
 
 type ScopeTarget = { scope: 'global' } | { scope: 'workspace'; workspaceFolder: string };
 type TodoTarget =
@@ -436,15 +437,6 @@ async function persistTodos(
 	}
 }
 
-function normalizePositions(todos: Todo[]): Todo[] {
-	return [...todos]
-		.sort((a, b) => a.position - b.position)
-		.map((todo, index) => ({
-			...todo,
-			position: index + 1,
-		}));
-}
-
 /**
  * Builds a localized, user-friendly label for a scope to reuse across UI prompts and toasts.
  */
@@ -544,33 +536,6 @@ function scopeFromWebviewScope(scope: WebviewScope): ScopeTarget | undefined {
  * Reorders todos in place based on IDs received from the webview, filling gaps by keeping any
  * unmapped items at the end. Returns whether positions actually changed.
  */
-function reorderTodosByOrder(todos: Todo[], order: string[]): boolean {
-	const lookup = new Map<string, Todo>();
-	todos.forEach((todo) => lookup.set(todo.id, todo));
-	const newOrder: Todo[] = [];
-	order.forEach((id) => {
-		const todo = lookup.get(id);
-		if (todo) {
-			newOrder.push(todo);
-			lookup.delete(id);
-		}
-	});
-	lookup.forEach((todo) => newOrder.push(todo));
-	let changed = false;
-	const now = new Date().toISOString();
-	newOrder.forEach((todo, index) => {
-		const nextPosition = index + 1;
-		if (todo.position !== nextPosition) {
-			todo.position = nextPosition;
-			todo.updatedAt = now;
-			changed = true;
-		}
-	});
-	// mutate original array order to match new order
-	todos.splice(0, todos.length, ...newOrder);
-	return changed;
-}
-
 /**
  * Routes inbound webview messages, performing mutations and broadcasting updated state.
  */
