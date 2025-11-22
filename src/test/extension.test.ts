@@ -181,7 +181,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
 			showQuickPickStub;
 
-		await addTodo(toHandlerContext(repository, host, autoDelete), () => noopBroadcast());
+		await addTodo(toHandlerContext(repository, host, autoDelete), () =>
+			host.broadcast({ type: 'stateUpdate' })
+		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
 		assert.ok(
@@ -221,7 +223,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
 			showQuickPickStub;
 
-		await addTodo(toHandlerContext(repository, host, autoDelete), () => noopBroadcast());
+		await addTodo(toHandlerContext(repository, host, autoDelete), () =>
+			host.broadcast({ type: 'stateUpdate' })
+		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
 		assert.ok(
@@ -257,7 +261,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
 			showQuickPickStub;
 
-		await editTodo(toHandlerContext(repository, host, autoDelete), () => noopBroadcast());
+		await editTodo(toHandlerContext(repository, host, autoDelete), () =>
+			host.broadcast({ type: 'stateUpdate' })
+		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
 		assert.ok(
@@ -300,7 +306,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		(vscode.window as unknown as { showQuickPick: typeof vscode.window.showQuickPick }).showQuickPick =
 			showQuickPickStub;
 
-		await editTodo(toHandlerContext(repository, host, autoDelete), () => noopBroadcast());
+		await editTodo(toHandlerContext(repository, host, autoDelete), () =>
+			host.broadcast({ type: 'stateUpdate' })
+		);
 
 		assert.deepStrictEqual(executedCommands, ['workbench.view.extension.todoContainer']);
 		assert.ok(
