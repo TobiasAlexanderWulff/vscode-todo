@@ -5,7 +5,6 @@ import * as vscode from 'vscode';
 import { HandlerContext } from '../types/handlerContext';
 import { addTodo, editTodo } from '../adapters/commandRouter';
 import { TodoRepository } from '../todoRepository';
-import { Todo } from '../types';
 import { AutoDeleteCoordinator } from '../services/autoDeleteService';
 import { ScopeTarget } from '../types/scope';
 import { handleWebviewMessage } from '../adapters/webviewRouter';

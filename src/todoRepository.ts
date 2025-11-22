@@ -154,7 +154,8 @@ export class TodoRepository {
 	}
 
 	private toEntity(todo: Todo): PersistedTodo {
-		const { scope, workspaceFolder, ...rest } = todo;
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		const { scope: _scope, workspaceFolder: _workspaceFolder, ...rest } = todo;
 		return { ...rest };
 	}
 

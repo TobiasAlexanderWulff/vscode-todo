@@ -1,6 +1,7 @@
 import typescriptEslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import boundaries from 'eslint-plugin-boundaries';
+import importPlugin from 'eslint-plugin-import';
 
 export default [
 	{
@@ -10,12 +11,16 @@ export default [
 		plugins: {
 			'@typescript-eslint': typescriptEslint,
 			boundaries,
+			import: importPlugin,
 		},
 
 		languageOptions: {
 			parser: tsParser,
 			ecmaVersion: 2022,
 			sourceType: 'module',
+			parserOptions: {
+				project: './tsconfig.json',
+			},
 		},
 
 		settings: {
@@ -46,6 +51,17 @@ export default [
 			eqeqeq: 'warn',
 			'no-throw-literal': 'warn',
 			semi: 'warn',
+
+			'import/no-default-export': 'error',
+			'import/no-cycle': 'error',
+			'import/order': 'off',
+			'@typescript-eslint/no-floating-promises': 'error',
+			'no-restricted-imports': 'off',
+			'prefer-const': 'warn',
+			'@typescript-eslint/no-unused-vars': [
+				'warn',
+				{ argsIgnorePattern: '^_' },
+			],
 
 			'boundaries/element-types': [
 				'error',
