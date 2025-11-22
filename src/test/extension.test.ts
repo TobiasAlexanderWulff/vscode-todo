@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import { afterEach } from 'mocha';
 import * as vscode from 'vscode';
 
-import type { HandlerContext } from '../types/handlerContext';
+import { HandlerContext } from '../types/handlerContext';
 import { addTodo, editTodo, handleWebviewMessage } from '../extension';
 import { TodoRepository } from '../todoRepository';
 import { Todo } from '../types';
@@ -109,10 +109,12 @@ suite('Command handlers', () => {
 		return instance;
 	}
 
-	function toHandlerAutoDelete(
+	function toHandlerContext(
+		repository: TodoRepository,
+		webviewHost: FakeWebviewHost,
 		autoDelete: AutoDeleteCoordinator<HandlerContext>
-	): Parameters<typeof handleWebviewMessage>[3] {
-		return autoDelete as Parameters<typeof handleWebviewMessage>[3];
+	): HandlerContext {
+		return { repository, webviewHost: webviewHost as any, autoDelete };
 	}
 
 	async function removeTodoWithoutUndo(
@@ -346,9 +348,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 					order: [todoB.id, todoA.id],
 				},
 			} as any,
-			repository,
-			host as any,
-			toHandlerAutoDelete(autoDelete)
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const todos = repository.getWorkspaceTodos(folder.toString());
@@ -403,9 +403,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 					scope: { scope: 'workspace', workspaceFolder: folder.toString() },
 				},
 			} as any,
-			repository,
-			host as any,
-			toHandlerAutoDelete(autoDelete)
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const restored = repository.getWorkspaceTodos(folder.toString());
@@ -449,9 +447,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 					todoId: todo.id,
 				},
 			} as any,
-			repository,
-			host as any,
-			toHandlerAutoDelete(autoDelete)
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const restored = repository.getGlobalTodos();
@@ -511,9 +507,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 					todoId: todo.id,
 				},
 			} as any,
-			repository,
-			host as any,
-			toHandlerAutoDelete(autoDelete)
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		await new Promise((resolve) => setTimeout(resolve, 75));
@@ -558,9 +552,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 					todoId: todo.id,
 				},
 			} as any,
-			repository,
-			host as any,
-			toHandlerAutoDelete(autoDelete)
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		await new Promise((resolve) => setTimeout(resolve, 25));
@@ -605,9 +597,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 					scope: { scope: 'global' },
 				},
 			} as any,
-			repository,
-			host as any,
-			toHandlerAutoDelete(autoDelete)
+			toHandlerContext(repository, host, autoDelete)
 		);
 
 		const restored = repository.getGlobalTodos();

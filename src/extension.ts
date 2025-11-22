@@ -11,7 +11,6 @@ import {
 	WebviewMessageEvent,
 } from './todoWebviewHost';
 import { buildWebviewStateSnapshot } from './webviewState';
-import { normalizePositions, reorderTodosByOrder } from './domain/todo';
 import { ScopeTarget, TodoTarget } from './types/scope';
 import { AutoDeleteCoordinator } from './services/autoDeleteService';
 import { HandlerContext } from './types/handlerContext';
@@ -20,6 +19,8 @@ import {
 	removeTodoWithUndo as removeTodoWithUndoService,
 	removeTodoWithoutUndo as removeTodoWithoutUndoService,
 } from './services/todoOperations';
+import { handleWebviewMessage as routeWebviewMessage } from './adapters/webviewRouter';
+import { normalizePositions } from './domain/todo';
 
 type HandlerAutoDelete = AutoDeleteCoordinator<HandlerContext>;
 
@@ -48,8 +49,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 			});
 		},
 	});
+	const handlerContext: HandlerContext = { repository, webviewHost, autoDelete };
 	const webviewMessageDisposable = webviewHost.onDidReceiveMessage((event) =>
-		handleWebviewMessage(event, repository, webviewHost, autoDelete)
+		routeWebviewMessage(event, handlerContext)
 	);
 
 	context.subscriptions.push(webviewHost, webviewMessageDisposable, autoDelete);
@@ -362,188 +364,5 @@ function scopeFromWebviewScope(scope: WebviewScope): ScopeTarget | undefined {
 /**
  * Routes inbound webview messages, performing mutations and broadcasting updated state.
  */
-export async function handleWebviewMessage(
-	event: WebviewMessageEvent,
-	repository: TodoRepository,
-	webviewHost: TodoWebviewHost,
-	autoDelete: HandlerAutoDelete
-): Promise<void> {
-	const { message } = event;
-	const handlerContext: HandlerContext = { repository, webviewHost, autoDelete };
-	if (message.type === 'webviewReady') {
-		broadcastWebviewState(webviewHost, repository);
-		return;
-	}
-	if (message.type === 'clearScope') {
-		const scope = scopeFromWebviewScope(message.scope);
-		if (!scope) {
-			return;
-		}
-		await clearScopeService(
-			handlerContext,
-			scope,
-			() => broadcastWebviewState(webviewHost, repository)
-		);
-		return;
-	}
-	const mutationResult = await handleWebviewMutation(message, handlerContext);
-	if (!mutationResult.mutated) {
-		return;
-	}
-	if (!mutationResult.broadcastHandled) {
-		broadcastWebviewState(webviewHost, repository);
-	}
-}
-
-interface MutationResult {
-	mutated: boolean;
-	broadcastHandled?: boolean;
-}
-
-async function handleWebviewMutation(
-	message: WebviewMessageEvent['message'],
-	context: HandlerContext
-): Promise<MutationResult> {
-	// Return mutation details so callers can decide whether to broadcast state.
-	switch (message.type) {
-		case 'commitCreate':
-			return {
-				mutated: await handleWebviewCreate(context.repository, message.scope, message.title),
-			};
-		case 'commitEdit':
-			return {
-				mutated: await handleWebviewEdit(
-					context.repository,
-					message.scope,
-					message.todoId,
-					message.title
-				),
-			};
-		case 'toggleComplete':
-			return {
-				mutated: await handleWebviewToggle(context, message.scope, message.todoId),
-			};
-		case 'removeTodo':
-			return handleWebviewRemoveWithUndo(context, message.scope, message.todoId);
-		case 'reorderTodos':
-			return {
-				mutated: await handleWebviewReorder(
-					context.repository,
-					message.scope,
-					message.order
-				),
-			};
-		default:
-			return { mutated: false };
-	}
-}
-
-async function handleWebviewCreate(
-	repository: TodoRepository,
-	scope: WebviewScope,
-	title: string
-): Promise<boolean> {
-	const target = scopeFromWebviewScope(scope);
-	const trimmed = title.trim();
-	if (!target || trimmed.length === 0) {
-		return false;
-	}
-	const todo = repository.createTodo({
-		title: trimmed,
-		scope: target.scope,
-		workspaceFolder: target.scope === 'workspace' ? target.workspaceFolder : undefined,
-	});
-	const todos = readTodos(repository, target);
-	todos.push(todo);
-	await persistTodos(repository, target, todos);
-	return true;
-}
-
-async function handleWebviewEdit(
-	repository: TodoRepository,
-	scope: WebviewScope,
-	todoId: string,
-	title: string
-): Promise<boolean> {
-	const target = scopeFromWebviewScope(scope);
-	if (!target) {
-		return false;
-	}
-	const trimmed = title.trim();
-	if (trimmed.length === 0) {
-		return false;
-	}
-	const todos = readTodos(repository, target);
-	const todo = todos.find((item) => item.id === todoId);
-	if (!todo) {
-		return false;
-	}
-	todo.title = trimmed;
-	todo.updatedAt = new Date().toISOString();
-	await persistTodos(repository, target, todos);
-	return true;
-}
-
-async function handleWebviewToggle(
-	context: HandlerContext,
-	scope: WebviewScope,
-	todoId: string
-): Promise<boolean> {
-	const target = scopeFromWebviewScope(scope);
-	if (!target) {
-		return false;
-	}
-	const todos = readTodos(context.repository, target);
-	const todo = todos.find((item) => item.id === todoId);
-	if (!todo) {
-		return false;
-	}
-	todo.completed = !todo.completed;
-	todo.updatedAt = new Date().toISOString();
-	await persistTodos(context.repository, target, todos);
-	if (todo.completed) {
-		context.autoDelete.schedule(context, target, todo.id);
-	} else {
-		context.autoDelete.cancel(target, todo.id);
-	}
-	return true;
-}
-
-async function handleWebviewRemoveWithUndo(
-	context: HandlerContext,
-	scope: WebviewScope,
-	todoId: string
-): Promise<MutationResult> {
-	const target = scopeFromWebviewScope(scope);
-	if (!target) {
-		return { mutated: false };
-	}
-	const removed = await removeTodoWithUndoService(
-		context,
-		target,
-		todoId,
-		() => broadcastWebviewState(context.webviewHost, context.repository)
-	);
-	return { mutated: removed, broadcastHandled: removed };
-}
-
-async function handleWebviewReorder(
-	repository: TodoRepository,
-	scope: WebviewScope,
-	order: string[]
-): Promise<boolean> {
-	const target = scopeFromWebviewScope(scope);
-	if (!target) {
-		return false;
-	}
-	const todos = readTodos(repository, target);
-	if (todos.length <= 1) {
-		return false;
-	}
-	const reordered = reorderTodosByOrder(todos, order);
-	if (!reordered) {
-		return false;
-	}
-	await persistTodos(repository, target, todos);
-	return true;
-}
+// legacy export used by tests; consider updating tests to import router directly
+export const handleWebviewMessage = routeWebviewMessage;
