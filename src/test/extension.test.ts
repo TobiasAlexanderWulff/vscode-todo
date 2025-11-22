@@ -468,7 +468,7 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		await new Promise((resolve) => setTimeout(resolve, 25));
 
 		assert.strictEqual(repository.getGlobalTodos().length, 0);
-		assert.ok(infoMessages.length > 0);
+		assert.strictEqual(infoMessages.length, 0);
 	});
 
 	test('respects the auto-delete enablement setting', async () => {

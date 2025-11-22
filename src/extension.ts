@@ -95,7 +95,7 @@ export class AutoDeleteCoordinator implements vscode.Disposable {
 		const timer = setTimeout(async () => {
 			this.timers.delete(key);
 			try {
-				await removeTodoWithUndo(context, scope, todoId);
+				await removeTodoWithoutUndo(context, scope, todoId);
 			} catch (error) {
 				console.error('Auto-delete failed', error);
 			}
@@ -310,6 +310,21 @@ async function removeTodoWithUndo(
 	} else {
 		setTimeout(() => context.repository.consumeSnapshot(scopeKey), UNDO_SNAPSHOT_TTL_MS);
 	}
+	return true;
+}
+
+async function removeTodoWithoutUndo(
+	context: HandlerContext,
+	scope: ScopeTarget,
+	todoId: string
+): Promise<boolean> {
+	const todos = readTodos(context.repository, scope);
+	const next = todos.filter((item) => item.id !== todoId);
+	if (next.length === todos.length) {
+		return false;
+	}
+	await persistTodos(context.repository, scope, next);
+	broadcastWebviewState(context.webviewHost, context.repository);
 	return true;
 }
 
