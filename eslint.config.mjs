@@ -2,6 +2,7 @@ import typescriptEslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import boundaries from 'eslint-plugin-boundaries';
 import importPlugin from 'eslint-plugin-import';
+import tsdocPlugin from 'eslint-plugin-tsdoc';
 
 export default [
 	{
@@ -19,6 +20,7 @@ export default [
 			'@typescript-eslint': typescriptEslint,
 			boundaries,
 			import: importPlugin,
+			tsdoc: tsdocPlugin,
 		},
 
 		languageOptions: {
@@ -87,6 +89,7 @@ export default [
 				},
 			],
 			'boundaries/no-unknown-files': 'error',
+			'tsdoc/syntax': 'error',
 		},
 	},
 ];
