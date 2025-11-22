@@ -6,6 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+### Added
+- Enforced layered architecture (domain → services → adapters → composition) with ESLint boundary rules.
+- Introduced command and webview routers plus a config adapter; `extension.ts` now only wires dependencies.
+- Centralized todo operations (clear/remove/undo, auto-delete) into services; settings are injected via the config adapter.
+- Added shared test helpers (`FakeWebviewHost`, config stubs, no-op broadcast) and updated tests to target adapters.
+- Added per-directory AGENTS guidance and refreshed architecture/testing documentation in README and `docs/ARCHITECTURE.md`.
+
 ## [0.2.0] - 2025-11-21
 
 ### Added
