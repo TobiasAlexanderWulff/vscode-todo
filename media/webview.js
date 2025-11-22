@@ -23,6 +23,9 @@
       case "startInlineEdit":
         handleStartInlineEdit(message.scope, message.todoId);
         break;
+      case "autoDeleteCue":
+        handleAutoDeleteCue(message.scope, message.todoId, message.durationMs);
+        break;
       default:
         break;
     }
@@ -43,6 +46,19 @@
     queueFocusSelector(`[data-inline-create="${getScopeKey(scope)}"]`);
     persistInlineState();
     render();
+  }
+  function handleAutoDeleteCue(scope, todoId, durationMs) {
+    if (!scopeAppliesToView(scope)) {
+      return;
+    }
+    const selector = scope.scope === "global" ? `.todo-item[data-todo-id="${todoId}"]` : `.workspace-section[data-workspace="${scope.workspaceFolder}"] .todo-item[data-todo-id="${todoId}"]`;
+    const row = document.querySelector(selector);
+    if (!row) {
+      return;
+    }
+    row.style.setProperty("--todo-auto-delete-duration", `${durationMs}ms`);
+    row.classList.add("auto-delete");
+    requestAnimationFrame(() => row.classList.add("fade-out"));
   }
   function handleStartInlineEdit(scope, todoId) {
     if (!scopeAppliesToView(scope)) {
@@ -176,6 +192,7 @@
       const inlineState = getInlineState(scope);
       const workspaceWrapper = document.createElement("div");
       workspaceWrapper.className = "workspace-section";
+      workspaceWrapper.dataset.workspace = folder.key;
       const workspaceTitle = document.createElement("div");
       workspaceTitle.className = "workspace-title";
       workspaceTitle.textContent = folder.label;

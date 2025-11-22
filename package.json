@@ -111,6 +111,23 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "%configuration.todo.confirmDestructiveActions.description%"
+        },
+        "todo.autoDeleteCompleted": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%configuration.todo.autoDeleteCompleted.description%"
+        },
+        "todo.autoDeleteDelayMs": {
+          "type": "number",
+          "default": 1500,
+          "minimum": 0,
+          "markdownDescription": "%configuration.todo.autoDeleteDelayMs.description%"
+        },
+        "todo.autoDeleteFadeMs": {
+          "type": "number",
+          "default": 750,
+          "minimum": 0,
+          "markdownDescription": "%configuration.todo.autoDeleteFadeMs.description%"
         }
       }
     }

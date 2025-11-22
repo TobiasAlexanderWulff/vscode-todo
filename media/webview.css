@@ -110,7 +110,8 @@ main {
   border: 1px solid transparent;
   transition:
     background-color 120ms ease,
-    border-color 120ms ease;
+    border-color 120ms ease,
+    opacity var(--todo-auto-delete-duration, 750ms) ease;
 }
 
 .todo-item:hover {
@@ -124,6 +125,10 @@ main {
 
 .todo-item.drag-over {
   border-color: var(--vscode-focusBorder);
+}
+
+.todo-item.auto-delete.fade-out {
+  opacity: 0;
 }
 
 .todo-title {
