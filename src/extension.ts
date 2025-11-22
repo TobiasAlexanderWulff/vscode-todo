@@ -18,6 +18,7 @@ type TodoTarget =
 	| { todoId: string; scope: 'workspace'; workspaceFolder: string };
 
 const UNDO_SNAPSHOT_TTL_MS = 10_000;
+const DEFAULT_AUTO_DELETE_DELAY_MS = 1_500;
 
 /**
  * Activation entry point: initializes localization, repositories, webviews, and commands.
@@ -27,16 +28,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 	const repository = new TodoRepository(context);
 	const webviewHost = new TodoWebviewHost(context);
+	const autoDelete = new AutoDeleteCoordinator();
 	const webviewMessageDisposable = webviewHost.onDidReceiveMessage((event) =>
-		handleWebviewMessage(event, repository, webviewHost)
+		handleWebviewMessage(event, repository, webviewHost, autoDelete)
 	);
 
-	context.subscriptions.push(webviewHost, webviewMessageDisposable);
+	context.subscriptions.push(webviewHost, webviewMessageDisposable, autoDelete);
 
 	registerCommands({
 		context,
 		repository,
 		webviewHost,
+		autoDelete,
 	});
 	broadcastWebviewState(webviewHost, repository);
 
@@ -51,26 +54,83 @@ interface CommandContext {
 	context: vscode.ExtensionContext;
 	repository: TodoRepository;
 	webviewHost: TodoWebviewHost;
+	autoDelete: AutoDeleteCoordinator;
 }
 
 /**
  * Registers all extension commands so they can be invoked via palette, keybindings, or UI buttons.
  */
-function registerCommands({ context, repository, webviewHost }: CommandContext): void {
+function registerCommands({ context, repository, webviewHost, autoDelete }: CommandContext): void {
+	const handlerContext: HandlerContext = { repository, webviewHost, autoDelete };
 	context.subscriptions.push(
-		vscode.commands.registerCommand('todo.addTodo', () => addTodo({ repository, webviewHost })),
-		vscode.commands.registerCommand('todo.editTodo', () => editTodo({ repository, webviewHost })),
-		vscode.commands.registerCommand('todo.completeTodo', () =>
-			toggleTodoCompletion({ repository, webviewHost })
-		),
-		vscode.commands.registerCommand('todo.removeTodo', () => removeTodo({ repository, webviewHost })),
-		vscode.commands.registerCommand('todo.clearTodos', () => clearTodos({ repository, webviewHost }))
+		vscode.commands.registerCommand('todo.addTodo', () => addTodo(handlerContext)),
+		vscode.commands.registerCommand('todo.editTodo', () => editTodo(handlerContext)),
+		vscode.commands.registerCommand('todo.completeTodo', () => toggleTodoCompletion(handlerContext)),
+		vscode.commands.registerCommand('todo.removeTodo', () => removeTodo(handlerContext)),
+		vscode.commands.registerCommand('todo.clearTodos', () => clearTodos(handlerContext))
 	);
 }
 
 interface HandlerContext {
 	repository: TodoRepository;
 	webviewHost: TodoWebviewHost;
+	autoDelete: AutoDeleteCoordinator;
+}
+
+export class AutoDeleteCoordinator implements vscode.Disposable {
+	private timers = new Map<string, NodeJS.Timeout>();
+
+	schedule(context: HandlerContext, scope: ScopeTarget, todoId: string): void {
+		const configuration = vscode.workspace.getConfiguration('todo');
+		const enabled = configuration.get<boolean>('autoDeleteCompleted', true);
+		if (!enabled) {
+			this.cancel(scope, todoId);
+			return;
+		}
+		const delay = this.sanitizeDelay(
+			configuration.get<number>('autoDeleteDelayMs', DEFAULT_AUTO_DELETE_DELAY_MS)
+		);
+		const key = this.buildKey(scope, todoId);
+		this.cancel(scope, todoId);
+		const timer = setTimeout(async () => {
+			this.timers.delete(key);
+			try {
+				await removeTodoWithUndo(context, scope, todoId);
+			} catch (error) {
+				console.error('Auto-delete failed', error);
+			}
+		}, delay);
+		this.timers.set(key, timer);
+	}
+
+	cancel(scope: ScopeTarget, todoId: string): void {
+		const key = this.buildKey(scope, todoId);
+		const timer = this.timers.get(key);
+		if (timer) {
+			clearTimeout(timer);
+			this.timers.delete(key);
+		}
+	}
+
+	cancelScope(scope: ScopeTarget, todos: Todo[]): void {
+		todos.forEach((todo) => this.cancel(scope, todo.id));
+	}
+
+	dispose(): void {
+		this.timers.forEach((timer) => clearTimeout(timer));
+		this.timers.clear();
+	}
+
+	private buildKey(scope: ScopeTarget, todoId: string): string {
+		return scope.scope === 'global' ? `global:${todoId}` : `${scope.workspaceFolder}:${todoId}`;
+	}
+
+	private sanitizeDelay(value?: number): number {
+		if (typeof value !== 'number' || Number.isNaN(value) || value < 0) {
+			return DEFAULT_AUTO_DELETE_DELAY_MS;
+		}
+		return value;
+	}
 }
 
 /**
@@ -112,14 +172,23 @@ async function toggleTodoCompletion(context: HandlerContext): Promise<void> {
 	if (!target) {
 		return;
 	}
-	const todos = readTodos(context.repository, target);
+	const scope = todoTargetToScopeTarget(target);
+	if (!scope) {
+		return;
+	}
+	const todos = readTodos(context.repository, scope);
 	const todo = todos.find((item) => item.id === target.todoId);
 	if (!todo) {
 		return;
 	}
 	todo.completed = !todo.completed;
 	todo.updatedAt = new Date().toISOString();
-	await persistTodos(context.repository, target, todos);
+	await persistTodos(context.repository, scope, todos);
+	if (todo.completed) {
+		context.autoDelete.schedule(context, scope, todo.id);
+	} else {
+		context.autoDelete.cancel(scope, todo.id);
+	}
 	const stateMessage = todo.completed
 		? l10n.t('command.complete.completed', 'Marked TODO as completed')
 		: l10n.t('command.complete.reopened', 'Marked TODO as active');
@@ -161,6 +230,7 @@ async function clearScope(context: HandlerContext, scope: ScopeTarget): Promise<
 		);
 		return;
 	}
+	context.autoDelete.cancelScope(scope, todos);
 	const confirmSetting = vscode.workspace
 		.getConfiguration('todo')
 		.get<boolean>('confirmDestructiveActions', true);
@@ -214,6 +284,7 @@ async function removeTodoWithUndo(
 	if (!todo) {
 		return false;
 	}
+	context.autoDelete.cancel(scope, todoId);
 	const scopeKey = context.repository.scopeKey(
 		scope.scope,
 		scope.scope === 'workspace' ? scope.workspaceFolder : undefined
@@ -472,9 +543,11 @@ function reorderTodosByOrder(todos: Todo[], order: string[]): boolean {
 export async function handleWebviewMessage(
 	event: WebviewMessageEvent,
 	repository: TodoRepository,
-	webviewHost: TodoWebviewHost
+	webviewHost: TodoWebviewHost,
+	autoDelete: AutoDeleteCoordinator
 ): Promise<void> {
 	const { message } = event;
+	const handlerContext: HandlerContext = { repository, webviewHost, autoDelete };
 	if (message.type === 'webviewReady') {
 		broadcastWebviewState(webviewHost, repository);
 		return;
@@ -484,10 +557,10 @@ export async function handleWebviewMessage(
 		if (!scope) {
 			return;
 		}
-		await clearScope({ repository, webviewHost }, scope);
+		await clearScope(handlerContext, scope);
 		return;
 	}
-	const mutationResult = await handleWebviewMutation(message, { repository, webviewHost });
+	const mutationResult = await handleWebviewMutation(message, handlerContext);
 	if (!mutationResult.mutated) {
 		return;
 	}
@@ -522,11 +595,7 @@ async function handleWebviewMutation(
 			};
 		case 'toggleComplete':
 			return {
-				mutated: await handleWebviewToggle(
-					context.repository,
-					message.scope,
-					message.todoId
-				),
+				mutated: await handleWebviewToggle(context, message.scope, message.todoId),
 			};
 		case 'removeTodo':
 			return handleWebviewRemoveWithUndo(context, message.scope, message.todoId);
@@ -590,7 +659,7 @@ async function handleWebviewEdit(
 }
 
 async function handleWebviewToggle(
-	repository: TodoRepository,
+	context: HandlerContext,
 	scope: WebviewScope,
 	todoId: string
 ): Promise<boolean> {
@@ -598,14 +667,19 @@ async function handleWebviewToggle(
 	if (!target) {
 		return false;
 	}
-	const todos = readTodos(repository, target);
+	const todos = readTodos(context.repository, target);
 	const todo = todos.find((item) => item.id === todoId);
 	if (!todo) {
 		return false;
 	}
 	todo.completed = !todo.completed;
 	todo.updatedAt = new Date().toISOString();
-	await persistTodos(repository, target, todos);
+	await persistTodos(context.repository, target, todos);
+	if (todo.completed) {
+		context.autoDelete.schedule(context, target, todo.id);
+	} else {
+		context.autoDelete.cancel(target, todo.id);
+	}
 	return true;
 }
 

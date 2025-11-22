@@ -30,10 +30,12 @@ Lightweight todos that live where you work: keep personal tasks alongside projec
 | `todo.removeTodo` | Remove TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Backspace</kbd> |
 | `todo.clearTodos` | Clear TODO list | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>Backspace</kbd> |
 
-## Setting
+## Settings
 | Setting | Default | Description |
 | --- | --- | --- |
 | `todo.confirmDestructiveActions` | `true` | If enabled, asks before clearing multiple todos and shows an Undo toast. |
+| `todo.autoDeleteCompleted` | `true` | Automatically delete completed todos after a short delay. |
+| `todo.autoDeleteDelayMs` | `1500` | Delay (in milliseconds) before deleting a completed todo when auto-delete is enabled. |
 
 ## Development
 ```bash
