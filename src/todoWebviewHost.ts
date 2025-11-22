@@ -6,20 +6,7 @@ export type WebviewScope =
 	| { scope: 'global' }
 	| { scope: 'workspace'; workspaceFolder: string };
 
-export type OutboundMessage =
-	| { type: 'stateUpdate'; payload: unknown }
-	| { type: 'startInlineCreate'; scope: WebviewScope }
-	| { type: 'startInlineEdit'; scope: WebviewScope; todoId: string }
-	| { type: 'autoDeleteCue'; scope: WebviewScope; todoId: string; durationMs: number };
-
-export type InboundMessage =
-	| { type: 'webviewReady'; mode: ProviderMode }
-	| { type: 'commitCreate'; scope: WebviewScope; title: string }
-	| { type: 'commitEdit'; scope: WebviewScope; todoId: string; title: string }
-	| { type: 'toggleComplete'; scope: WebviewScope; todoId: string }
-	| { type: 'removeTodo'; scope: WebviewScope; todoId: string }
-	| { type: 'reorderTodos'; scope: WebviewScope; order: string[] }
-	| { type: 'clearScope'; scope: WebviewScope };
+import { InboundMessage, OutboundMessage } from './types/webviewMessages';
 
 export interface WebviewMessageEvent {
 	mode: ProviderMode;

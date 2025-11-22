@@ -1,7 +1,7 @@
 import { HandlerContext } from '../types/handlerContext';
 import { ScopeTarget } from '../types/scope';
 import { TodoRepository } from '../todoRepository';
-import { TodoWebviewHost, WebviewMessageEvent, WebviewScope } from '../todoWebviewHost';
+import { TodoWebviewHost, ProviderMode } from '../todoWebviewHost';
 import { normalizePositions, reorderTodosByOrder } from '../domain/todo';
 import {
 	clearScope as clearScopeService,
@@ -9,6 +9,12 @@ import {
 } from '../services/todoOperations';
 import { Todo } from '../types';
 import { readConfig } from './config';
+import {
+	InboundMessage,
+	OutboundMessage,
+	WebviewMessageEvent,
+	WebviewScope,
+} from '../types/webviewMessages';
 
 interface MutationResult {
 	mutated: boolean;
@@ -16,7 +22,7 @@ interface MutationResult {
 }
 
 export async function handleWebviewMessage(
-	event: WebviewMessageEvent,
+	event: { mode: ProviderMode; message: InboundMessage },
 	context: HandlerContext
 ): Promise<void> {
 	const { message } = event;
