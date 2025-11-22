@@ -444,6 +444,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 						if (key === 'autoDeleteDelayMs') {
 							return 5 as T;
 						}
+						if (key === 'autoDeleteFadeMs') {
+							return 10 as T;
+						}
 						if (key === 'confirmDestructiveActions') {
 							return true as T;
 						}
@@ -469,6 +472,10 @@ test('addTodo dispatches inline create after focusing container', async () => {
 
 		assert.strictEqual(repository.getGlobalTodos().length, 0);
 		assert.strictEqual(infoMessages.length, 0);
+		const autoDeleteMessages = host.postMessages.filter(
+			(entry) => (entry.message as { type?: string }).type === 'autoDeleteCue'
+		);
+		assert.strictEqual(autoDeleteMessages.length, 1);
 	});
 
 	test('respects the auto-delete enablement setting', async () => {
@@ -487,6 +494,9 @@ test('addTodo dispatches inline create after focusing container', async () => {
 						}
 						if (key === 'autoDeleteDelayMs') {
 							return 5 as T;
+						}
+						if (key === 'autoDeleteFadeMs') {
+							return 10 as T;
 						}
 						if (key === 'confirmDestructiveActions') {
 							return true as T;
@@ -514,6 +524,10 @@ test('addTodo dispatches inline create after focusing container', async () => {
 		const todos = repository.getGlobalTodos();
 		assert.strictEqual(todos.length, 1);
 		assert.strictEqual(todos[0].completed, true);
+		const autoDeleteMessages = host.postMessages.filter(
+			(entry) => (entry.message as { type?: string }).type === 'autoDeleteCue'
+		);
+		assert.strictEqual(autoDeleteMessages.length, 0);
 	});
 
 	test('clears and restores global todos via undo from webview', async () => {

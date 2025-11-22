@@ -9,7 +9,8 @@ export type WebviewScope =
 export type OutboundMessage =
 	| { type: 'stateUpdate'; payload: unknown }
 	| { type: 'startInlineCreate'; scope: WebviewScope }
-	| { type: 'startInlineEdit'; scope: WebviewScope; todoId: string };
+	| { type: 'startInlineEdit'; scope: WebviewScope; todoId: string }
+	| { type: 'autoDeleteCue'; scope: WebviewScope; todoId: string; durationMs: number };
 
 export type InboundMessage =
 	| { type: 'webviewReady'; mode: ProviderMode }

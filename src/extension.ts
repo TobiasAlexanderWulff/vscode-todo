@@ -19,6 +19,7 @@ type TodoTarget =
 
 const UNDO_SNAPSHOT_TTL_MS = 10_000;
 const DEFAULT_AUTO_DELETE_DELAY_MS = 1_500;
+const DEFAULT_AUTO_DELETE_FADE_MS = 750;
 
 /**
  * Activation entry point: initializes localization, repositories, webviews, and commands.
@@ -88,16 +89,34 @@ export class AutoDeleteCoordinator implements vscode.Disposable {
 			return;
 		}
 		const delay = this.sanitizeDelay(
-			configuration.get<number>('autoDeleteDelayMs', DEFAULT_AUTO_DELETE_DELAY_MS)
+			configuration.get<number>('autoDeleteDelayMs', DEFAULT_AUTO_DELETE_DELAY_MS),
+			DEFAULT_AUTO_DELETE_DELAY_MS
+		);
+		const fadeDuration = this.sanitizeDelay(
+			configuration.get<number>('autoDeleteFadeMs', DEFAULT_AUTO_DELETE_FADE_MS),
+			DEFAULT_AUTO_DELETE_FADE_MS
 		);
 		const key = this.buildKey(scope, todoId);
 		this.cancel(scope, todoId);
 		const timer = setTimeout(async () => {
-			this.timers.delete(key);
+			const removalTimer = setTimeout(async () => {
+				this.timers.delete(key);
+				try {
+					await removeTodoWithoutUndo(context, scope, todoId);
+				} catch (error) {
+					console.error('Auto-delete failed', error);
+				}
+			}, fadeDuration);
+			this.timers.set(key, removalTimer);
 			try {
-				await removeTodoWithoutUndo(context, scope, todoId);
+				context.webviewHost.postMessage(scopeToProviderMode(scope), {
+					type: 'autoDeleteCue',
+					scope: scopeTargetToWebviewScope(scope),
+					todoId,
+					durationMs: fadeDuration,
+				});
 			} catch (error) {
-				console.error('Auto-delete failed', error);
+				console.error('Auto-delete fade failed', error);
 			}
 		}, delay);
 		this.timers.set(key, timer);
@@ -125,9 +144,9 @@ export class AutoDeleteCoordinator implements vscode.Disposable {
 		return scope.scope === 'global' ? `global:${todoId}` : `${scope.workspaceFolder}:${todoId}`;
 	}
 
-	private sanitizeDelay(value?: number): number {
+	private sanitizeDelay(value: number | undefined, defaultValue = DEFAULT_AUTO_DELETE_DELAY_MS): number {
 		if (typeof value !== 'number' || Number.isNaN(value) || value < 0) {
-			return DEFAULT_AUTO_DELETE_DELAY_MS;
+			return defaultValue;
 		}
 		return value;
 	}

@@ -36,6 +36,7 @@ Lightweight todos that live where you work: keep personal tasks alongside projec
 | `todo.confirmDestructiveActions` | `true` | If enabled, asks before clearing multiple todos and shows an Undo toast. |
 | `todo.autoDeleteCompleted` | `true` | Automatically delete completed todos after a short delay. |
 | `todo.autoDeleteDelayMs` | `1500` | Delay (in milliseconds) before deleting a completed todo when auto-delete is enabled. |
+| `todo.autoDeleteFadeMs` | `750` | Fade-out duration (in milliseconds) before a completed todo is removed automatically. |
 
 ## Development
 ```bash

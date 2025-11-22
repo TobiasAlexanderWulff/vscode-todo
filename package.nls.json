@@ -10,5 +10,6 @@
 	"view.todoGlobal.label": "Global TODOs",
 	"view.todoProjects.label": "Project TODOs",
 	"configuration.todo.autoDeleteCompleted.description": "Automatically delete completed todos after a short delay.",
-	"configuration.todo.autoDeleteDelayMs.description": "Delay in milliseconds before auto-deleting a completed todo."
+	"configuration.todo.autoDeleteDelayMs.description": "Delay in milliseconds before auto-deleting a completed todo.",
+	"configuration.todo.autoDeleteFadeMs.description": "Fade-out duration (in milliseconds) before an auto-deleted todo is removed."
 }
