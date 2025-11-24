@@ -5,21 +5,20 @@ Lightweight todos that live where you work: keep personal tasks alongside projec
 ![Version](https://img.shields.io/badge/version-0.2.1-blue?label=Version) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ## Two scopes, one view
-- **Global (profile-bound):** your personal list follows your VS Code profile everywhere.
-- **Projects (workspace-bound):** each workspace folder keeps its own todos; multi-root workspaces get one collapsible section per folder.
+- **Global (profile-bound):** follow your VS Code profile everywhere.
+- **Projects (workspace-bound):** each workspace gets its own list (multi-root supported).
 
 ## What you can do
-- Inline add/edit directly inside the Activity Bar view—stay in flow, no modal inputs.
-- Drag-and-drop ordering with persisted `position` so your custom sort sticks.
-- Toggle completion, remove single items, or clear a list with layered confirmation and an Undo toast.
-- Keyboard-friendly commands and defaults (Ctrl/Cmd + Alt chord) always available via the Command Palette.
-- English and German localization via `@vscode/l10n`.
+- Add & edit todos inline - no popups, no friction
+- Drag & drop ordering (persisted automatically)
+- Quick toggle, delete, and undo
+- Keyboard-first workflow (Cmd/Ctrl + Alt shortcuts)
+- English & German UI
 
 ## Quick start
 1) Open the **TODOs** icon in the Activity Bar (the toolbar where your explorer/search/git icons live).
-2) Click the plus in either Global or Projects (or press `Ctrl/Cmd + Alt + T`) to create a todo inline.
-3) Drag items to reorder; toggle completion by clicking the checkbox.
-4) Clear a list via the trash icon—confirmations respect `todo.confirmDestructiveActions` and offer Undo.
+2) In the view header, click the `Add` action (or press `Ctrl/Cmd + Alt + T`) to add your first todo.
+3) Try dragging your todo to reorder it, or click the checkbox to mark it as done.
 
 ## Commands and shortcuts
 | Command | Title | Default shortcut |
@@ -37,18 +36,3 @@ Lightweight todos that live where you work: keep personal tasks alongside projec
 | `todo.autoDeleteCompleted` | `true` | Automatically delete completed todos after a short delay. |
 | `todo.autoDeleteDelayMs` | `1500` | Delay (in milliseconds) before deleting a completed todo when auto-delete is enabled. |
 | `todo.autoDeleteFadeMs` | `750` | Fade-out duration (in milliseconds) before a completed todo is removed automatically. |
-
-## Development
-```bash
-npm install
-npm run compile       # type-check + lint + build
-npm run watch         # incremental build while coding
-npm run test          # VS Code extension tests
-```
-
-Architecture highlights:
-- Layered modules with boundary linting: domain helpers, services, adapters (commands/webview/config), and a thin `extension.ts` for composition.
-- Webview and command routers live under `src/adapters/`; settings are read via `src/adapters/config.ts` and injected into behaviors (e.g., auto-delete).
-- Tests import adapters directly and stub config via `src/test/testUtils` when needed.
-
-See `docs/vision.md` for the product principles, `docs/ROADMAP.md` for planned releases, and `docs/implementation-plan.md` for build tasks.
