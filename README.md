@@ -4,6 +4,9 @@ Lightweight todos that live where you work: keep personal tasks alongside projec
 
 [![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/TobiasWulff.vscode-todolist.png)](https://marketplace.visualstudio.com/items?itemName=TobiasWulff.vscode-todolist) [![GitHub License](https://img.shields.io/github/license/tobiasalexanderwulff/vscode-todolist.png)](https://github.com/tobiasalexanderwulff/vscode-todolist/blob/main/LICENSE)
 
+## See it in action
+![TODO list demo](https://raw.githubusercontent.com/tobiasalexanderwulff/vscode-todolist/main/images/pizza-demo.gif)
+
 ## Two scopes, one view
 - **Global (profile-bound):** follow your VS Code profile everywhere.
 - **Projects (workspace-bound):** each workspace gets its own list (multi-root supported).
