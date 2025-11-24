@@ -157,6 +157,10 @@ main {
   display: flex;
   align-items: center;
   gap: 0.2rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 120ms ease, visibility 120ms ease;
 }
 
 .todo-action {
@@ -182,6 +186,13 @@ main {
 
 .todo-action:hover {
   background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.05));
+}
+
+.todo-item:hover .todo-actions,
+.todo-item:focus-within .todo-actions {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .todo-toggle {

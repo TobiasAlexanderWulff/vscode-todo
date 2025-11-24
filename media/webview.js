@@ -276,7 +276,7 @@
     const toggleButton = document.createElement("button");
     toggleButton.className = "todo-action todo-toggle";
     toggleButton.title = (_a2 = snapshot == null ? void 0 : snapshot.strings.completeLabel) != null ? _a2 : "Toggle complete";
-    toggleButton.innerHTML = todo.completed ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.5L7 11L11.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/></svg>';
+    toggleButton.innerHTML = todo.completed ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.5L7 11L11.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/></svg>';
     toggleButton.addEventListener(
       "click",
       () => postMessage({
