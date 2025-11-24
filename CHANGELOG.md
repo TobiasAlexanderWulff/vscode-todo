@@ -9,11 +9,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.3.0] - 2025-11-24
 
 ### Added
-- Enforced layered architecture (domain → services → adapters → composition) with ESLint boundary rules.
-- Introduced command and webview routers plus a config adapter; `extension.ts` now only wires dependencies.
-- Centralized todo operations (clear/remove/undo, auto-delete) into services; settings are injected via the config adapter.
-- Added shared test helpers (`FakeWebviewHost`, config stubs, no-op broadcast) and updated tests to target adapters.
-- Added per-directory AGENTS guidance and refreshed architecture/testing documentation in README and `docs/ARCHITECTURE.md`.
+- Context-aware empty-state messages for Global/Projects scopes, localized for EN/DE and expanded with celebratory variants.
+- Configurable auto-delete for completed todos, including delay and fade settings, with settings routed through a new config adapter.
+- Layered architecture (domain → services → adapters → composition) with command/webview routers and ESLint boundary rules to enforce the structure.
+- GitHub Actions workflows for lint/test/release and a roadmap doc linked from contributor guidance.
+- Shared test helpers (`FakeWebviewHost`, config stubs, no-op broadcast) plus per-directory AGENTS notes to guide contributors.
+
+### Changed
+- Webview polish: complete toggle moved to the leading edge, action buttons reveal smoothly on hover, and row spacing/hover feel refined.
+- README refresh with marketplace-safe badges, a new demo gif, clearer quick start steps, and added marketplace keywords for discoverability.
+
+### Fixed
+- Load the active locale bundle for webview strings so empty states and prompts follow the current VS Code language.
 
 ## [0.2.0] - 2025-11-21
 
