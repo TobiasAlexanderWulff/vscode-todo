@@ -8,5 +8,8 @@
 	"command.todo.clearTodos.title": "Todos löschen",
 	"viewContainer.todo.title": "Todos",
 	"view.todoGlobal.label": "Globale Todos",
-	"view.todoProjects.label": "Projekt-Todos"
+	"view.todoProjects.label": "Projekt-Todos",
+	"configuration.todo.autoDeleteCompleted.description": "Abgeschlossene Todos nach einer kurzen Verzögerung automatisch löschen.",
+	"configuration.todo.autoDeleteDelayMs.description": "Verzögerung in Millisekunden, bevor ein abgeschlossenes Todo automatisch gelöscht wird.",
+	"configuration.todo.autoDeleteFadeMs.description": "Ausblenddauer (in Millisekunden), bevor ein automatisch gelöschtes Todo entfernt wird."
 }

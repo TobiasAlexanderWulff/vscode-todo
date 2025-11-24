@@ -2,24 +2,26 @@
 
 Lightweight todos that live where you work: keep personal tasks alongside project tasks in one Activity Bar home.
 
-![Version](https://img.shields.io/badge/version-0.2.1-blue?label=Version) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
+[![VS Code Marketplace](https://vsmarketplacebadges.dev/version-short/TobiasWulff.vscode-todolist.png)](https://marketplace.visualstudio.com/items?itemName=TobiasWulff.vscode-todolist) [![GitHub License](https://img.shields.io/github/license/tobiasalexanderwulff/vscode-todolist.png)](https://github.com/tobiasalexanderwulff/vscode-todolist/blob/main/LICENSE)
+
+## See it in action
+![TODO list demo](https://raw.githubusercontent.com/tobiasalexanderwulff/vscode-todolist/main/images/pizza-demo.gif)
 
 ## Two scopes, one view
-- **Global (profile-bound):** your personal list follows your VS Code profile everywhere.
-- **Projects (workspace-bound):** each workspace folder keeps its own todos; multi-root workspaces get one collapsible section per folder.
+- **Global (profile-bound):** follow your VS Code profile everywhere.
+- **Projects (workspace-bound):** each workspace gets its own list (multi-root supported).
 
 ## What you can do
-- Inline add/edit directly inside the Activity Bar view—stay in flow, no modal inputs.
-- Drag-and-drop ordering with persisted `position` so your custom sort sticks.
-- Toggle completion, remove single items, or clear a list with layered confirmation and an Undo toast.
-- Keyboard-friendly commands and defaults (Ctrl/Cmd + Alt chord) always available via the Command Palette.
-- English and German localization via `@vscode/l10n`.
+- Add & edit todos inline - no popups, no friction
+- Drag & drop ordering (persisted automatically)
+- Quick toggle, delete, and undo
+- Keyboard-first workflow (Cmd/Ctrl + Alt shortcuts)
+- English & German UI
 
 ## Quick start
-1) Open the **TODOs** icon in the Activity Bar.
-2) Click the plus in either Global or Projects (or press `Ctrl/Cmd + Alt + T`) to create a todo inline.
-3) Drag items to reorder; toggle completion by clicking the checkbox.
-4) Clear a list via the trash icon—confirmations respect `todo.confirmDestructiveActions` and offer Undo.
+1) Open the **TODOs** icon in the Activity Bar (the toolbar where your explorer/search/git icons live).
+2) In the view header, click the `Add` action (or press `Ctrl/Cmd + Alt + T`) to add your first todo.
+3) Try dragging your todo to reorder it, or click the checkbox to mark it as done.
 
 ## Commands and shortcuts
 | Command | Title | Default shortcut |
@@ -30,17 +32,10 @@ Lightweight todos that live where you work: keep personal tasks alongside projec
 | `todo.removeTodo` | Remove TODO | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Backspace</kbd> |
 | `todo.clearTodos` | Clear TODO list | <kbd>Ctrl/Cmd</kbd> + <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>Backspace</kbd> |
 
-## Setting
+## Settings
 | Setting | Default | Description |
 | --- | --- | --- |
 | `todo.confirmDestructiveActions` | `true` | If enabled, asks before clearing multiple todos and shows an Undo toast. |
-
-## Development
-```bash
-npm install
-npm run compile       # type-check + lint + build
-npm run watch         # incremental build while coding
-npm run test          # VS Code extension tests
-```
-
-See `docs/vision.md` for the product principles and `docs/implementation-plan.md` for the roadmap.
+| `todo.autoDeleteCompleted` | `true` | Automatically delete completed todos after a short delay. |
+| `todo.autoDeleteDelayMs` | `1500` | Delay (in milliseconds) before deleting a completed todo when auto-delete is enabled. |
+| `todo.autoDeleteFadeMs` | `750` | Fade-out duration (in milliseconds) before a completed todo is removed automatically. |

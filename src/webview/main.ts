@@ -1,3 +1,5 @@
+/** Webview runtime powering the TODO list views. */
+
 declare const acquireVsCodeApi: <TState>() => VsCodeApi<TState>;
 
 type ProviderMode = 'global' | 'projects';
@@ -7,7 +9,8 @@ type WebviewScope = { scope: 'global' } | { scope: 'workspace'; workspaceFolder:
 type HostMessage =
 	| { type: 'stateUpdate'; payload: WebviewStateSnapshot }
 	| { type: 'startInlineCreate'; scope: WebviewScope }
-	| { type: 'startInlineEdit'; scope: WebviewScope; todoId: string };
+	| { type: 'startInlineEdit'; scope: WebviewScope; todoId: string }
+	| { type: 'autoDeleteCue'; scope: WebviewScope; todoId: string; durationMs: number };
 
 type ExtensionMessage =
 	| { type: 'webviewReady'; mode: ProviderMode }
@@ -47,6 +50,7 @@ interface WebviewWorkspaceState {
 	key: string;
 	label: string;
 	description?: string;
+	emptyLabel: string;
 	todos: WebviewTodoState[];
 }
 
@@ -70,11 +74,13 @@ interface WebviewStrings {
 	clearLabel: string;
 }
 
+/** Tracks inline creation/editing state per scope within the webview. */
 interface InlineState {
 	creating: boolean;
 	editingId?: string;
 }
 
+/** Serialized inline state persisted via VS Code's webview state storage. */
 interface StoredInlineState {
 	global: InlineState;
 	workspaces: Record<string, InlineState>;
@@ -104,6 +110,9 @@ window.addEventListener('message', (event) => {
 		case 'startInlineEdit':
 			handleStartInlineEdit(message.scope, message.todoId);
 			break;
+		case 'autoDeleteCue':
+			handleAutoDeleteCue(message.scope, message.todoId, message.durationMs);
+			break;
 		default:
 			break;
 	}
@@ -111,12 +120,22 @@ window.addEventListener('message', (event) => {
 
 vscode.postMessage({ type: 'webviewReady', mode: viewMode });
 
+/**
+ * Replaces the current snapshot with the latest state from the extension and re-renders the view.
+ *
+ * @param nextSnapshot - Serialized state update message.
+ */
 function handleStateUpdate(nextSnapshot: WebviewStateSnapshot): void {
 	snapshot = nextSnapshot;
 	pruneInlineState();
 	render();
 }
 
+/**
+ * Starts inline creation for a given scope and focuses the new input.
+ *
+ * @param scope - Scope in which the inline row should appear.
+ */
 function handleStartInlineCreate(scope: WebviewScope): void {
 	if (!scopeAppliesToView(scope)) {
 		return;
@@ -129,6 +148,36 @@ function handleStartInlineCreate(scope: WebviewScope): void {
 	render();
 }
 
+/**
+ * Applies a fade-out class for todos scheduled for auto-delete.
+ *
+ * @param scope - Scope containing the todo.
+ * @param todoId - Identifier of the todo being removed.
+ * @param durationMs - Fade duration supplied by the extension.
+ */
+function handleAutoDeleteCue(scope: WebviewScope, todoId: string, durationMs: number): void {
+	if (!scopeAppliesToView(scope)) {
+		return;
+	}
+	const selector =
+		scope.scope === 'global'
+			? `.todo-item[data-todo-id="${todoId}"]`
+			: `.workspace-section[data-workspace="${scope.workspaceFolder}"] .todo-item[data-todo-id="${todoId}"]`;
+	const row = document.querySelector<HTMLElement>(selector);
+	if (!row) {
+		return;
+	}
+	row.style.setProperty('--todo-auto-delete-duration', `${durationMs}ms`);
+	row.classList.add('auto-delete');
+	requestAnimationFrame(() => row.classList.add('fade-out'));
+}
+
+/**
+ * Begins inline edit mode for a todo within the current view.
+ *
+ * @param scope - Scope containing the todo.
+ * @param todoId - Identifier of the todo being edited.
+ */
 function handleStartInlineEdit(scope: WebviewScope, todoId: string): void {
 	if (!scopeAppliesToView(scope)) {
 		return;
@@ -141,6 +190,12 @@ function handleStartInlineEdit(scope: WebviewScope, todoId: string): void {
 	render();
 }
 
+/**
+ * Ensures incoming scope actions match the current provider mode.
+ *
+ * @param scope - Target scope.
+ * @returns True when the scope is relevant to the current webview.
+ */
 function scopeAppliesToView(scope: WebviewScope): boolean {
 	if (viewMode === 'global') {
 		return scope.scope === 'global';
@@ -148,6 +203,7 @@ function scopeAppliesToView(scope: WebviewScope): boolean {
 	return scope.scope === 'workspace';
 }
 
+/** Restores persisted inline editing/creation state from VS Code. */
 function restoreInlineState(): void {
 	const stored = vscode.getState();
 	if (!stored) {
@@ -159,6 +215,7 @@ function restoreInlineState(): void {
 	});
 }
 
+/** Persists inline editing/creation state to VS Code storage. */
 function persistInlineState(): void {
 	const serialized: StoredInlineState = {
 		global: { ...inlineGlobal },
@@ -170,6 +227,11 @@ function persistInlineState(): void {
 	vscode.setState(serialized);
 }
 
+/**
+ * Retrieves inline state for a scope, initializing it when missing.
+ *
+ * @param scope - Target scope.
+ */
 function getInlineState(scope: WebviewScope): InlineState {
 	if (scope.scope === 'global') {
 		return inlineGlobal;
@@ -182,6 +244,9 @@ function getInlineState(scope: WebviewScope): InlineState {
 	return state;
 }
 
+/**
+ * Removes stale inline editing references when todos or workspaces disappear.
+ */
 function pruneInlineState(): void {
 	if (!snapshot) {
 		return;
@@ -209,6 +274,7 @@ function pruneInlineState(): void {
 	});
 }
 
+/** Renders the root container based on the latest snapshot and inline state. */
 function render(): void {
 	if (!snapshot) {
 		root.innerHTML = '<p class="empty-state">Waiting for TODOs…</p>';
@@ -223,6 +289,12 @@ function render(): void {
 	applyPendingFocus();
 }
 
+/**
+ * Renders a single scope section (global or workspace) including inline rows.
+ *
+ * @param state - Snapshot for the scope.
+ * @param scope - Target scope metadata.
+ */
 function renderScopeSection(state: WebviewScopeState, scope: WebviewScope): HTMLElement {
 	const section = document.createElement('section');
 	section.className = 'todo-section';
@@ -258,6 +330,11 @@ function renderScopeSection(state: WebviewScopeState, scope: WebviewScope): HTML
 	return section;
 }
 
+/**
+ * Renders the projects container with one subsection per workspace folder.
+ *
+ * @param projects - Snapshot of workspace folders.
+ */
 function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 	const container = document.createElement('section');
 	container.className = 'todo-section';
@@ -276,6 +353,7 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 
 		const workspaceWrapper = document.createElement('div');
 		workspaceWrapper.className = 'workspace-section';
+		workspaceWrapper.dataset.workspace = folder.key;
 
 		const workspaceTitle = document.createElement('div');
 		workspaceTitle.className = 'workspace-title';
@@ -301,7 +379,7 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 		if (folder.todos.length === 0 && !inlineState.creating) {
 			const empty = document.createElement('p');
 			empty.className = 'empty-state';
-			empty.textContent = snapshot?.projects.emptyLabel ?? '';
+			empty.textContent = folder.emptyLabel;
 			list.appendChild(empty);
 		}
 
@@ -313,6 +391,11 @@ function renderProjectsSection(projects: WebviewProjectsState): HTMLElement {
 	return container;
 }
 
+/**
+ * Renders the add/clear action buttons for a scope header.
+ *
+ * @param scope - Scope to act on.
+ */
 function renderSectionActions(scope: WebviewScope): HTMLElement {
 	const actions = document.createElement('div');
 	actions.className = 'section-actions';
@@ -332,6 +415,11 @@ function renderSectionActions(scope: WebviewScope): HTMLElement {
 	return actions;
 }
 
+/**
+ * Renders inline creation controls for a scope.
+ *
+ * @param scope - Scope to create a todo within.
+ */
 function renderInlineCreateRow(scope: WebviewScope): HTMLElement {
 	const row = document.createElement('div');
 	row.className = 'todo-item inline-create';
@@ -364,11 +452,33 @@ function renderInlineCreateRow(scope: WebviewScope): HTMLElement {
 	return row;
 }
 
+/**
+ * Renders a todo row, switching between read and edit mode based on inline state.
+ *
+ * @param scope - Scope the todo belongs to.
+ * @param todo - Todo data for the row.
+ * @param inlineState - Inline editing state for the scope.
+ */
 function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState: InlineState): HTMLElement {
 	const row = document.createElement('div');
 	row.className = 'todo-item';
 	row.dataset.todoId = todo.id;
 	row.draggable = !inlineState.editingId;
+
+	const toggleButton = document.createElement('button');
+	toggleButton.className = 'todo-action todo-toggle';
+	toggleButton.title = snapshot?.strings.completeLabel ?? 'Toggle complete';
+	toggleButton.innerHTML = todo.completed
+		? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.5L7 11L11.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+		: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/></svg>';
+	toggleButton.addEventListener('click', () =>
+		postMessage({
+			type: 'toggleComplete',
+			scope,
+			todoId: todo.id,
+		}),
+	);
+	row.appendChild(toggleButton);
 
 	if (inlineState.editingId === todo.id) {
 		const input = document.createElement('input');
@@ -409,19 +519,6 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	const actions = document.createElement('div');
 	actions.className = 'todo-actions';
 
-	const toggleButton = document.createElement('button');
-	toggleButton.className = 'todo-action';
-	toggleButton.title = snapshot?.strings.completeLabel ?? 'Toggle complete';
-	toggleButton.innerHTML = todo.completed
-		? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.5L7 11L11.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-		: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/></svg>';
-	toggleButton.addEventListener('click', () => postMessage({
-		type: 'toggleComplete',
-		scope,
-		todoId: todo.id,
-	}));
-	actions.appendChild(toggleButton);
-
 	const editButton = document.createElement('button');
 	editButton.className = 'todo-action';
 	editButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path transform="translate(0, 2)" d="M12.5 3.5L10 1L3 8V10.5H5.5L12.5 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -444,6 +541,7 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	return row;
 }
 
+/** Starts inline creation for the provided scope and persists inline state. */
 function startInlineCreate(scope: WebviewScope): void {
 	if (!scopeAppliesToView(scope)) {
 		return;
@@ -456,6 +554,7 @@ function startInlineCreate(scope: WebviewScope): void {
 	render();
 }
 
+/** Cancels inline creation and re-renders the view. */
 function cancelInlineCreate(scope: WebviewScope): void {
 	const state = getInlineState(scope);
 	state.creating = false;
@@ -463,6 +562,12 @@ function cancelInlineCreate(scope: WebviewScope): void {
 	render();
 }
 
+/**
+ * Commits inline creation input, ignoring empty values.
+ *
+ * @param scope - Scope to create a todo in.
+ * @param value - User-entered title.
+ */
 function commitInlineCreate(scope: WebviewScope, value: string): void {
 	const trimmed = value.trim();
 	if (trimmed.length === 0) {
@@ -475,6 +580,7 @@ function commitInlineCreate(scope: WebviewScope, value: string): void {
 	persistInlineState();
 }
 
+/** Starts inline edit mode for a todo and persists inline state. */
 function startInlineEdit(scope: WebviewScope, todoId: string): void {
 	if (!scopeAppliesToView(scope)) {
 		return;
@@ -487,6 +593,7 @@ function startInlineEdit(scope: WebviewScope, todoId: string): void {
 	render();
 }
 
+/** Exits inline edit mode without saving changes. */
 function exitInlineEdit(scope: WebviewScope): void {
 	const state = getInlineState(scope);
 	state.editingId = undefined;
@@ -494,6 +601,13 @@ function exitInlineEdit(scope: WebviewScope): void {
 	render();
 }
 
+/**
+ * Commits inline edits for a todo when the input is valid.
+ *
+ * @param scope - Scope containing the todo.
+ * @param todoId - Identifier of the todo being edited.
+ * @param value - Updated title text.
+ */
 function commitInlineEdit(scope: WebviewScope, todoId: string, value: string): void {
 	const trimmed = value.trim();
 	if (trimmed.length === 0) {
@@ -506,6 +620,13 @@ function commitInlineEdit(scope: WebviewScope, todoId: string, value: string): v
 	persistInlineState();
 }
 
+/**
+ * Attaches drag-and-drop handlers for reordering todos within a list.
+ *
+ * @param list - Container element holding todo rows.
+ * @param scope - Scope containing the todos.
+ * @param inlineState - Inline edit state used to guard against drag while editing.
+ */
 function attachDragHandlers(list: HTMLElement, scope: WebviewScope, inlineState: InlineState): void {
 	let draggedId: string | undefined;
 	list.addEventListener('dragstart', (event) => {
@@ -574,10 +695,12 @@ function attachDragHandlers(list: HTMLElement, scope: WebviewScope, inlineState:
 	}
 }
 
+/** Queues a selector to be focused after the next render. */
 function queueFocusSelector(selector: string): void {
 	pendingFocusSelectors.add(selector);
 }
 
+/** Focuses any queued selectors once the DOM has been updated. */
 function applyPendingFocus(): void {
 	if (pendingFocusSelectors.size === 0) {
 		return;
@@ -595,10 +718,12 @@ function applyPendingFocus(): void {
 	});
 }
 
+/** Returns the serialization key for a scope used by DOM data attributes. */
 function getScopeKey(scope: WebviewScope): string {
 	return scope.scope === 'global' ? 'global' : scope.workspaceFolder;
 }
 
+/** Sends a message from the webview to the extension host. */
 function postMessage(message: ExtensionMessage): void {
 	vscode.postMessage(message);
 }
