@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-11-24
+
 ### Added
 - Enforced layered architecture (domain → services → adapters → composition) with ESLint boundary rules.
 - Introduced command and webview routers plus a config adapter; `extension.ts` now only wires dependencies.
