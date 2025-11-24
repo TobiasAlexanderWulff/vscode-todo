@@ -273,6 +273,19 @@
     row.className = "todo-item";
     row.dataset.todoId = todo.id;
     row.draggable = !inlineState.editingId;
+    const toggleButton = document.createElement("button");
+    toggleButton.className = "todo-action todo-toggle";
+    toggleButton.title = (_a2 = snapshot == null ? void 0 : snapshot.strings.completeLabel) != null ? _a2 : "Toggle complete";
+    toggleButton.innerHTML = todo.completed ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.5L7 11L11.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/></svg>';
+    toggleButton.addEventListener(
+      "click",
+      () => postMessage({
+        type: "toggleComplete",
+        scope,
+        todoId: todo.id
+      })
+    );
+    row.appendChild(toggleButton);
     if (inlineState.editingId === todo.id) {
       const input = document.createElement("input");
       input.className = "todo-input";
@@ -310,16 +323,6 @@
     }
     const actions = document.createElement("div");
     actions.className = "todo-actions";
-    const toggleButton = document.createElement("button");
-    toggleButton.className = "todo-action";
-    toggleButton.title = (_a2 = snapshot == null ? void 0 : snapshot.strings.completeLabel) != null ? _a2 : "Toggle complete";
-    toggleButton.innerHTML = todo.completed ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 8.5L7 11L11.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5"/></svg>';
-    toggleButton.addEventListener("click", () => postMessage({
-      type: "toggleComplete",
-      scope,
-      todoId: todo.id
-    }));
-    actions.appendChild(toggleButton);
     const editButton = document.createElement("button");
     editButton.className = "todo-action";
     editButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path transform="translate(0, 2)" d="M12.5 3.5L10 1L3 8V10.5H5.5L12.5 3.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
