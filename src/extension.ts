@@ -20,7 +20,13 @@ import { ScopeTarget } from './types/scope';
  * @param context - VS Code extension context for this activation.
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-	await l10n.config({ fsPath: context.asAbsolutePath('l10n/bundle.l10n.json') });
+	if (vscode.l10n.uri) {
+		await l10n.config({ uri: vscode.l10n.uri.toString() });
+	} else if (vscode.l10n.bundle) {
+		l10n.config({ contents: vscode.l10n.bundle });
+	} else {
+		await l10n.config({ fsPath: context.asAbsolutePath('l10n/bundle.l10n.json') });
+	}
 
 	const repository = new TodoRepository(context);
 	const webviewHost = new TodoWebviewHost(context);

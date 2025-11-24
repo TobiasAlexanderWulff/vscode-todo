@@ -1,4 +1,13 @@
 {
+	"@metadata": {
+		"language": "en",
+		"translations": [
+			{
+				"language": "de",
+				"path": "./bundle.l10n.de.json"
+			}
+		]
+	},
 	"extension.activatedLog": "vscode-todolist extension activated.",
 	"tree.global.label": "Global",
 	"tree.projects.label": "Projects",
