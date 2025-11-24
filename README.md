@@ -16,7 +16,7 @@ Lightweight todos that live where you work: keep personal tasks alongside projec
 - English and German localization via `@vscode/l10n`.
 
 ## Quick start
-1) Open the **TODOs** icon in the Activity Bar.
+1) Open the **TODOs** icon in the Activity Bar (the toolbar where your explorer/search/git icons live).
 2) Click the plus in either Global or Projects (or press `Ctrl/Cmd + Alt + T`) to create a todo inline.
 3) Drag items to reorder; toggle completion by clicking the checkbox.
 4) Clear a list via the trash icon—confirmations respect `todo.confirmDestructiveActions` and offer Undo.
