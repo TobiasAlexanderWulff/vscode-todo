@@ -184,6 +184,10 @@ main {
   background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.05));
 }
 
+.todo-toggle {
+  margin-right: 0.35rem;
+}
+
 .inline-hint {
   font-size: 0.75rem;
   opacity: 0.75;
