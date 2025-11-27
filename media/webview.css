@@ -194,6 +194,10 @@ main {
   background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.05));
 }
 
+.todo-action.copied {
+  transform: scale(1.1);
+}
+
 .todo-item:hover .todo-actions,
 .todo-item:focus-within .todo-actions {
   opacity: 1;

@@ -525,15 +525,28 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	copyButton.className = 'todo-action';
 	copyButton.innerHTML =
 		//'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
-		'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>'
-		copyButton.title = snapshot?.strings.copyLabel ?? 'Copy';
-	copyButton.addEventListener('click', () =>
+		'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>';
+	copyButton.title = snapshot?.strings.copyLabel ?? 'Copy';
+	const originalCopyIcon = copyButton.innerHTML;
+	const copiedIcon =
+		'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clipboard-check"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>';
+	let copyResetHandle: number | undefined;
+	copyButton.addEventListener('click', () => {
 		postMessage({
 			type: 'copyTodo',
 			scope,
 			todoId: todo.id,
-		}),
-	);
+		});
+		copyButton.innerHTML = copiedIcon;
+		copyButton.classList.add('copied');
+		if (copyResetHandle) {
+			window.clearTimeout(copyResetHandle);
+		}
+		copyResetHandle = window.setTimeout(() => {
+			copyButton.innerHTML = originalCopyIcon;
+			copyButton.classList.remove('copied');
+		}, 4000);
+	});
 	actions.appendChild(copyButton);
 
 	const editButton = document.createElement('button');
