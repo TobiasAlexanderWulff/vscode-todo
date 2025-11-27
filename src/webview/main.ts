@@ -530,7 +530,13 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 	const originalCopyIcon = copyButton.innerHTML;
 	const copiedIcon =
 		'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-clipboard-check"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>';
-	let copyResetHandle: number | undefined;
+	const resetCopyState = () => {
+		if (!copyButton.classList.contains('copied')) {
+			return;
+		}
+		copyButton.innerHTML = originalCopyIcon;
+		copyButton.classList.remove('copied');
+	};
 	copyButton.addEventListener('click', () => {
 		postMessage({
 			type: 'copyTodo',
@@ -539,14 +545,8 @@ function renderTodoRow(scope: WebviewScope, todo: WebviewTodoState, inlineState:
 		});
 		copyButton.innerHTML = copiedIcon;
 		copyButton.classList.add('copied');
-		if (copyResetHandle) {
-			window.clearTimeout(copyResetHandle);
-		}
-		copyResetHandle = window.setTimeout(() => {
-			copyButton.innerHTML = originalCopyIcon;
-			copyButton.classList.remove('copied');
-		}, 4000);
 	});
+	row.addEventListener('mouseleave', resetCopyState);
 	actions.appendChild(copyButton);
 
 	const editButton = document.createElement('button');
