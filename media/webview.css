@@ -188,6 +188,9 @@ main {
   width: 16px;
   height: 16px;
   display: block;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
 }
 
 .todo-action:hover {
@@ -195,7 +198,23 @@ main {
 }
 
 .todo-action.copied {
-  transform: scale(1.1);
+  color: var(--vscode-testing-iconPassed, var(--vscode-textLink-foreground, currentColor));
+  transform: scale(1.06);
+}
+
+.todo-action.copied svg {
+  animation: copy-pop 200ms ease;
+}
+
+@keyframes copy-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85) rotate(-6deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .todo-item:hover .todo-actions,
