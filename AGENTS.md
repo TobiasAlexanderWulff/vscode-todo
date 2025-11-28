@@ -7,7 +7,7 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 ### 1. Vision & Scope Agent
 - Source of truth: `docs/vision.md`.
 - Keep the dual-scope todo workflow intact (global/profile vs. per-project) and ensure any new feature proposals respect the principles listed there.
-- Maintain the command surface (`todo.addTodo`, `todo.editTodo`, `todo.completeTodo`, `todo.removeTodo`, `todo.clearTodos`) and the custom Explorer TreeView layout (Global + Projects with workspace-folder nodes).
+- Maintain the command surface (`todo.addTodo`, `todo.editTodo`, `todo.completeTodo`, `todo.removeTodo`, `todo.clearTodos`) and the current Webview-based Global + Projects layout (workspace-folder sections for projects).
 - Confirm UX decisions stay consistent: drag-and-drop ordering via `position`, layered confirmations with undo toasts, EN/DE localization, and responsive multi-root behavior.
 
 ### 2. Builder Agent
@@ -30,6 +30,11 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 - Keep `.vscode/` and `.vscodeignore` aligned with the development workflow (launch configs, tasks, packaging ignore rules).
 - Prepare marketplace releases by running `npm run package` and documenting notable changes in the changelog.
 - Maintain a local `AGENTS.md` in each important directory (e.g., `src/`, `src/adapters/`, `src/services/`, `src/test/`, `docs/`) that captures directory-specific guardrails for contributors.
+
+**Changelog and roadmap discipline**
+- Every user-facing change must update `CHANGELOG.md` under `[Unreleased]` (or a dated release section) with Added/Changed/Fixed notes.
+- Keep `docs/ROADMAP.md` in sync with what shipped vs. what is planned; move completed items out of future milestones.
+- When cutting a release, ensure `CHANGELOG.md` reflects the final notes and the roadmap points to the next goals.
 
 ## Shared Workflows
 - Install dependencies: `npm install`.
