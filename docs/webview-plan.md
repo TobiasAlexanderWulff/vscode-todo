@@ -1,6 +1,6 @@
 # Webview Rewrite Plan
 
-Documenting the agreed direction for replacing the existing TreeView-based UI with WebviewViews that support inline creation/editing of todos.
+Documenting the agreed direction for the WebviewView-based UI (replacing the earlier TreeView) that supports inline creation/editing of todos.
 
 ## Objectives
 - Keep the dual-scope workflow (profile/global and workspace/project) visible side by side.

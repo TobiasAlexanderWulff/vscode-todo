@@ -14,7 +14,7 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 - Implement extension code in `src/` using TypeScript and the VS Code API. Prefer small, composable modules (e.g., repository, tree provider, command handlers).
 - Keep code lint-clean and formatted: run `npm run lint` (ESLint with `@typescript-eslint/recommended`) and match Prettier defaults (2 spaces, single quotes, 100-char width, semicolons).
 - Bundle with `esbuild` via the provided scripts (`npm run compile`, `npm run package`, `npm run watch`).
-- When introducing destructive actions, hook into the confirmation flow defined in the vision (settings-aware prompts, undo toasts, subtle TreeView animations).
+- When introducing destructive actions, hook into the confirmation flow defined in the vision (settings-aware prompts, undo toasts, subtle webview animations).
 - Respect the layered architecture (`docs/ARCHITECTURE.md`): domain → services → adapters (commands, webview, config) → composition (`extension.ts`). VS Code API access belongs in adapters/composition only; settings are read via `src/adapters/config.ts`.
 
 ### 3. QA & Test Agent
@@ -26,7 +26,7 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 ### 4. Documentation & Release Agent
 - Update `README.md`, `CHANGELOG.md`, and `docs/vision.md` when behavior or scope changes.
 - Keep `docs/ROADMAP.md` current and aligned with the vision; ensure README/links point to it.
-- Provide screenshots or animations for the TreeView when features stabilize.
+- Provide screenshots or animations for the webview views when features stabilize.
 - Keep `.vscode/` and `.vscodeignore` aligned with the development workflow (launch configs, tasks, packaging ignore rules).
 - Prepare marketplace releases by running `npm run package` and documenting notable changes in the changelog.
 - Maintain a local `AGENTS.md` in each important directory (e.g., `src/`, `src/adapters/`, `src/services/`, `src/test/`, `docs/`) that captures directory-specific guardrails for contributors.
@@ -48,7 +48,7 @@ Guidance for anyone (human or automated) collaborating on this repository. Follo
 
 ## Contribution Checklist
 1. Read `docs/vision.md` and confirm the change supports the vision.
-2. Implement feature/fix under `src/`, keeping commands and TreeView logic cohesive.
+2. Implement feature/fix under `src/`, keeping commands and WebviewView logic cohesive.
 3. Update or add tests in `src/test`.
 4. Run `npm run lint`, `npm run check-types`, `npm run test`.
 5. Refresh docs/changelog if user-facing behavior shifts.
