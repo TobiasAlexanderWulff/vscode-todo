@@ -115,16 +115,6 @@ main {
     opacity var(--todo-auto-delete-duration, 750ms) ease;
 }
 
-.todo-item.copy-flash {
-  animation: copy-flash-deep-blue 700ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes copy-flash-deep-blue {
-  0%   { background-color: rgba(0, 120, 215, 0); }
-  15%  { background-color: rgba(0, 120, 215, 0.25); }
-  100% { background-color: rgba(0, 120, 215, 0); }
-}
-
 .todo-item:hover {
   background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.05));
   border-color: var(--vscode-focusBorder, rgba(255, 255, 255, 0.1));

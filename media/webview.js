@@ -350,8 +350,6 @@
       });
       copyButton.innerHTML = copiedIcon;
       copyButton.classList.add("copied");
-      row.classList.add("copy-flash");
-      window.setTimeout(() => row.classList.remove("copy-flash"), 700);
     });
     row.addEventListener("mouseleave", () => {
       resetCopyState();
