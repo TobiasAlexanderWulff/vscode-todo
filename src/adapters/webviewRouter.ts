@@ -217,7 +217,9 @@ async function handleWebviewCopy(
 		l10n.t('webview.todo.copy.success', 'Copied to clipboard')
 	);
 	setTimeout(() => {
-		void vscode.commands.executeCommand('workbench.action.closeMessages');
+		void vscode.commands
+			.executeCommand('workbench.action.closeMessages')
+			.then(undefined, () => undefined);
 	}, toastDurationMs);
 }
 

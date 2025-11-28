@@ -385,6 +385,50 @@ suite('Command handlers', () => {
 		assert.strictEqual(host.broadcastMessages.length, 0);
 	});
 
+	test('copy todo ignores missing closeMessages command', async () => {
+		const { repository } = createRepositoryHarness();
+		const todo = repository.createTodo({ title: 'Copy me', scope: 'global' });
+		await repository.saveGlobalTodos([todo]);
+
+		const host = new FakeWebviewHost();
+		const autoDelete = createAutoDelete(host);
+		let copied: string | undefined;
+		const scheduledTimeouts: Array<() => void> = [];
+		const writeTextStub: HandlerContext['clipboardWriteText'] = async (value: string) => {
+			copied = value;
+		};
+		const executeCommandStub: typeof vscode.commands.executeCommand = async () => {
+			throw new Error('command missing');
+		};
+		const showInformationMessageStub: typeof vscode.window.showInformationMessage = async () => {
+			return undefined as unknown as never;
+		};
+		const setTimeoutStub = ((callback: (...args: any[]) => void) => {
+			scheduledTimeouts.push(callback);
+			return 0 as unknown as ReturnType<typeof setTimeout>;
+		}) as unknown as typeof setTimeout;
+		(vscode.window as unknown as { showInformationMessage: typeof vscode.window.showInformationMessage }).showInformationMessage =
+			showInformationMessageStub;
+		(vscode.commands as unknown as { executeCommand: typeof vscode.commands.executeCommand }).executeCommand =
+			executeCommandStub;
+		(global as unknown as { setTimeout: typeof setTimeout }).setTimeout = setTimeoutStub;
+
+		await handleWebviewMessage(
+			{
+				mode: 'global',
+				message: { type: 'copyTodo', scope: { scope: 'global' }, todoId: todo.id },
+			},
+			toHandlerContext(repository, host, autoDelete, {
+				clipboardWriteText: writeTextStub,
+				webviewHost: host as unknown as TodoWebviewHost,
+			})
+		);
+		scheduledTimeouts.forEach((fn) => fn());
+
+		assert.strictEqual(copied, 'Copy me');
+		assert.strictEqual(host.broadcastMessages.length, 0);
+	});
+
 	test('clears and restores workspace todos via undo from webview', async () => {
 		const folder = vscode.Uri.parse('file:///workspace');
 		overrideWorkspaceFolders([{ uri: folder, name: 'workspace', index: 0 }]);
