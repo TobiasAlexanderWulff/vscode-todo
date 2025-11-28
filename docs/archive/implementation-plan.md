@@ -1,4 +1,6 @@
-# Implementation Plan
+# Archived: Implementation Plan
+
+Superseded by the living roadmap in `docs/ROADMAP.md` and the principles in `docs/vision.md`. Retained for historical context.
 
 High-level roadmap for building the VS Code TODO extension. Each phase references the agreements captured in `docs/vision.md` and `AGENTS.md`.
 

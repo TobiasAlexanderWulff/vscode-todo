@@ -1,4 +1,6 @@
-# Webview Rewrite Plan
+# Archived: Webview Rewrite Plan
+
+Superseded by the delivered webview experience; kept for historical context. Active direction lives in `docs/vision.md` and `docs/ROADMAP.md`.
 
 Documenting the agreed direction for the WebviewView-based UI (replacing the earlier TreeView) that supports inline creation/editing of todos.
 
